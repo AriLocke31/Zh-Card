@@ -1,0 +1,28 @@
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: jenkins-pipe:local
+    container_name: jenkins-pipe
+
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    environment:
+      AWS_CONFIG_FILE: /run/jenkins-identity/config
+      AWS_PROFILE: jenkins-pipe
+
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - type: bind
+        source: ${JENKINS_IDENTITY_DIR}
+        target: /run/jenkins-identity
+        read_only: true
+
+volumes:
+  jenkins_home:
+    external: true

@@ -1,0 +1,72 @@
+#root {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1em;
+
+  background-color: #CBD3AD;
+}
+
+.topbar {
+  display: flex
+}
+
+.topbar-title {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 20px;
+  color: #5A3828;
+
+}
+
+.nav-link {
+  margin-inline: 1em;
+  text-decoration: none;
+
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 20px;
+  color: #5A3828;
+}
+
+.add-word-form {
+  background-color: #DDC3E3;
+
+  border-radius: .25em;
+  padding: 1em;
+  margin: 1em;
+}
+
+.form-title {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 24px;
+  line-height: 1.2;
+  color: #5A3828;
+  margin-bottom: .5em;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+
+  margin-top: 1em;
+}
+
+.form-label {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 18px;
+  line-height: 1;
+  color: #5A3828;
+
+  margin-left: 5px;
+}
+
+.add-word-input-box {
+  line-height: 2;
+}
+
+.submit-btn {
+  font-size: 24px;
+  font-family: 'DM Serif Display', Georgia, serif;
+  margin-top: 1em;
+  background-color: #5A3828;
+  color: #DDC3E3;
+}
