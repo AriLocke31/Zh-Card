@@ -91,7 +91,7 @@ pipeline {
     }
 
     always {
-      archiveArtifacts artifacts: 'backend/lambda.zip',
+      archiveArtifacts artifacts: 'src/backend/lambda.zip',
         fingerprint: true,
         allowEmptyArchive: true
     }
