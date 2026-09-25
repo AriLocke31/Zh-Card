@@ -330,7 +330,7 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
     <Paper
       variant="outlined"
       sx={{
-        maxWidth: 900,
+        maxWidth: 600,
         mx: "auto",
         p: { xs: 2, sm: 4 },
         borderRadius: 3,
@@ -356,7 +356,10 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
 
       {/* Written forms */}
 
-      <Typography variant="h5" gutterBottom>Written forms</Typography>
+      <Stack direction="row" spacing={2}>
+        <Typography variant="h5" gutterBottom>Written forms</Typography>
+        <Button startIcon={<AddIcon />} onClick={addForm} variant="outlined">ADD</Button>
+      </Stack>
 
       <Stack spacing={2} sx={{ mt: 2 }}>
         {draft.forms.map((form) => {
@@ -370,12 +373,9 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
 
           return (
             <Paper key={form.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Stack spacing={2}>
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  sx={{ alignItems: "center" }}>
-                  <TextField
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={2} useFlexGap>
+                  <TextField sx={{ flex: 1 }}
                     label="Hanzi"
                     value={form.text}
                     onChange={(event) =>
@@ -383,27 +383,27 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
                         text: event.target.value,
                       })
                     }
-                    fullWidth
                     required
                   />
+
+                  <TextField select label="Script" value={form.script} sx={{ flex: 1 }}
+                    onChange={(event) =>
+                      updateForm(form.id, {
+                        script: event.target.value as WrittenForm["script"],
+                      })
+                    }>
+                    <MenuItem value="simplified">Simplified</MenuItem>
+                    <MenuItem value="traditional">Traditional</MenuItem>
+                    <MenuItem value="both">Both</MenuItem>
+                    <MenuItem value="variant">Variant</MenuItem>
+                  </TextField>
 
                   <IconButton aria-label="Remove written form" onClick={() => removeForm(form.id)}>
                     <DeleteOutlineIcon />
                   </IconButton>
                 </Stack>
 
-                <TextField select label="Script" value={form.script}
-                  onChange={(event) =>
-                    updateForm(form.id, {
-                      script: event.target.value as WrittenForm["script"],
-                    })
-                  }
-                  fullWidth>
-                  <MenuItem value="simplified">Simplified</MenuItem>
-                  <MenuItem value="traditional">Traditional</MenuItem>
-                  <MenuItem value="both">Both</MenuItem>
-                  <MenuItem value="variant">Variant</MenuItem>
-                </TextField>
+
 
                 <FormControlLabel
                   control={
@@ -428,21 +428,24 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
           );
         })}
 
-        <Button startIcon={<AddIcon />} onClick={addForm} variant="outlined">Add written form</Button>
       </Stack>
 
       <Divider sx={{ my: 4 }} />
 
       {/* Pronunciations */}
 
-      <Typography variant="h5" gutterBottom>Pronunciations</Typography>
+      <Stack direction="row" spacing={2}>
+        <Typography variant="h5" gutterBottom>Pronunciations</Typography>
+        <Button startIcon={<AddIcon />} onClick={addReading} variant="outlined">ADD</Button>
+      </Stack>
 
-      <Stack spacing={2} sx={{ mt: 2 }}>
+      <Stack spacing={1} sx={{ mt: 2 }}>
         {draft.readings.map((reading) => (
           <Paper key={reading.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
             <Stack spacing={2}>
               <Stack direction="row" spacing={2}>
                 <TextField select label="Language variety" value={reading.variety}
+                  sx={{ flex: 1 }}
                   onChange={(event) => {
                     const variety =
                       event.target.value as Reading["variety"];
@@ -462,64 +465,98 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
                   <MenuItem value="yue">Cantonese</MenuItem>
                 </TextField>
 
+                {reading.system === "pinyin" ? (
+                  <PinyinInput key={`${reading.id}-${reading.system}`} romanization={reading.romanization} display={reading.display}
+                    sx={{ flex: 2 }}
+                    onChange={(romanization, display) => {
+                      updateReading(reading.id, { romanization, display });
+                    }}
+                  />
+                ) : (
+                  <TextField label="Jyutping" value={reading.romanization} sx={{ flex: 2 }}
+                    onChange={(event) =>
+                      updateReading(reading.id, { romanization: event.target.value, })
+                    }
+                    placeholder="din6 nou5" fullWidth
+                  />
+                )}
+
+
+              </Stack>
+
+
+              <Stack direction="row" spacing={2}>
+                <TextField label="Display pronunciation" value={reading.display ?? ""} onChange={(event) =>
+                  updateReading(reading.id, {
+                    display: event.target.value,
+                  })
+                }
+                  placeholder="diànnǎo" fullWidth />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={reading.isStandard}
+                      onChange={(event) =>
+                        updateReading(reading.id, {
+                          isStandard: event.target.checked,
+                        })
+                      }
+                    />
+                  }
+                  label="Standard pronunciation" />
+
                 <IconButton aria-label="Remove pronunciation" onClick={() => removeReading(reading.id)}>
                   <DeleteOutlineIcon />
                 </IconButton>
               </Stack>
-
-              {reading.system === "pinyin" ? (
-                <PinyinInput key={`${reading.id}-${reading.system}`} romanization={reading.romanization} display={reading.display}
-                  onChange={(romanization, display) => {
-                    updateReading(reading.id, { romanization, display });
-                  }}
-                />
-              ) : (
-                <TextField label="Jyutping" value={reading.romanization}
-                  onChange={(event) =>
-                    updateReading(reading.id, { romanization: event.target.value, })
-                  }
-                  placeholder="din6 nou5" fullWidth
-                />
-              )}
-
-              <TextField label="Display pronunciation" value={reading.display ?? ""} onChange={(event) =>
-                updateReading(reading.id, {
-                  display: event.target.value,
-                })
-              }
-                placeholder="diànnǎo" fullWidth />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={reading.isStandard}
-                    onChange={(event) =>
-                      updateReading(reading.id, {
-                        isStandard: event.target.checked,
-                      })
-                    }
-                  />
-                }
-                label="Standard pronunciation" />
             </Stack>
           </Paper>
         ))}
 
-        <Button startIcon={<AddIcon />} onClick={addReading} variant="outlined">Add pronunciation</Button>
       </Stack>
 
       <Divider sx={{ my: 4 }} />
 
       {/* Definitions */}
 
-      <Typography variant="h5" gutterBottom>Definitions</Typography>
+      <Stack direction="row" spacing={2}>
+        <Typography variant="h5" gutterBottom>Definitions</Typography>
+        <Button startIcon={<AddIcon />} onClick={addSense} variant="outlined">ADD</Button>
+      </Stack>
 
       <Stack spacing={2} sx={{ mt: 2 }}>
         {draft.senses.map((sense, index) => (
           <Paper key={sense.id} variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
-            <Stack spacing={3}>
-              <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="subtitle1">Sense {index + 1}</Typography>
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
+                <TextField select label="Part of speech" sx={{ flex: 1 }}
+                  value={sense.partOfSpeech ?? ""}
+                  onChange={(event) =>
+                    updateSense(sense.id, {
+                      partOfSpeech:
+                        event.target.value
+                          ? event.target.value as PartOfSpeech
+                          : undefined,
+                    })
+                  }>
+                  <MenuItem value="">Unspecified</MenuItem>
+
+                  {partOfSpeechOptions.map((pos) => (
+                    <MenuItem key={pos} value={pos}>
+                      {pos}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField sx={{ flex: 1 }}
+                  label="Definition language"
+                  value={sense.language}
+                  onChange={(event) =>
+                    updateSense(sense.id, {
+                      language: event.target.value,
+                    })
+                  } />
 
                 <IconButton aria-label="Remove definition" onClick={() => removeSense(sense.id)}>
                   <DeleteOutlineIcon />
@@ -536,39 +573,8 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
                 }
                 multiline minRows={2} fullWidth required />
 
-              <TextField
-                select
-                label="Part of speech"
-                value={sense.partOfSpeech ?? ""}
-                onChange={(event) =>
-                  updateSense(sense.id, {
-                    partOfSpeech:
-                      event.target.value
-                        ? event.target.value as PartOfSpeech
-                        : undefined,
-                  })
-                }
-                fullWidth>
-                <MenuItem value="">Unspecified</MenuItem>
 
-                {partOfSpeechOptions.map((pos) => (
-                  <MenuItem key={pos} value={pos}>
-                    {pos}
-                  </MenuItem>
-                ))}
-              </TextField>
 
-              <TextField
-                label="Definition language"
-                value={sense.language}
-                onChange={(event) =>
-                  updateSense(sense.id, {
-                    language: event.target.value,
-                  })
-                }
-                helperText="BCP 47 language tag, e.g. en or zh"
-                fullWidth
-              />
 
               {/* Link definition to readings */}
 
@@ -631,7 +637,6 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
           </Paper>
         ))}
 
-        <Button startIcon={<AddIcon />} onClick={addSense} variant="outlined">Add definition</Button>
       </Stack>
 
       <Divider sx={{ my: 4 }} />

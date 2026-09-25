@@ -38,26 +38,25 @@ export default function SenseTagInput({ onAdd, }: SenseTagInputProps) {
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack direction="row" spacing={2}>
       <TextField select label="Category" value={category} onChange={(event) =>
         setCategory(event.target.value as SenseTag["category"])
-      } fullWidth>
+      } sx={{ flex: 1 }}>
         {categories.map((option) => (
           <MenuItem key={option} value={option}>{option}</MenuItem>
         ))}
       </TextField>
 
-      <Stack direction="row" spacing={1}>
-        <TextField label="Tag" value={value} onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              handleAdd();
-            }
-          }} placeholder="e.g. archaic" fullWidth />
+      <TextField label="Tag" value={value} onChange={(event) => setValue(event.target.value)}
+        sx={{ flex: 2 }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            handleAdd();
+          }
+        }} placeholder="e.g. archaic" fullWidth />
 
-        <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAdd} disabled={!value.trim()}>Add</Button>
-      </Stack>
+      <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAdd} disabled={!value.trim()}>Add</Button>
     </Stack>
   );
 }

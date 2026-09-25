@@ -1,12 +1,13 @@
 import { useState, type KeyboardEvent } from "react";
 
-import { Autocomplete, TextField, Box, Typography } from "@mui/material";
+import { Autocomplete, TextField, Box, Typography, SxProps, type Theme } from "@mui/material";
 import { getToneOptions, parsePinyin, type ToneOption } from "../utils/pinyin";
 
 interface PinyinInputProps {
   romanization: string;
   display?: string | undefined;
   onChange: (romanization: string, display: string) => void;
+  sx?: SxProps<Theme>
 }
 
 function getActiveSyllable(text: string): string {
@@ -16,7 +17,7 @@ function getActiveSyllable(text: string): string {
   return text.split(/\s+/).at(-1) ?? "";
 }
 
-export default function PinyinInput({ romanization, display, onChange }: PinyinInputProps) {
+export default function PinyinInput({ romanization, display, onChange, sx }: PinyinInputProps) {
   const [inputValue, setInputValue] = useState(() => {
     return (
       parsePinyin(romanization)?.editingText ?? romanization
@@ -86,6 +87,7 @@ export default function PinyinInput({ romanization, display, onChange }: PinyinI
 
   return (
     <Autocomplete<ToneOption, false, false, true>
+      sx={sx}
       options={options}
       open={open && options.length > 0}
       onOpen={() => { if (options.length > 0) setOpen(true); }}
@@ -125,7 +127,7 @@ export default function PinyinInput({ romanization, display, onChange }: PinyinI
           onBlur={() => setHasBlurred(true)}
           onKeyDown={handleKeyDown}
           error={isIncomplete}
-          helperText={isIncomplete ? "Complete each syllable by selecting a tone" : parsed ? `Canonical: ${parsed.canonical}` : "Enter a syllable to see its tone options"} fullWidth />
+          helperText={isIncomplete ? "Complete each syllable by selecting a tone" : parsed ? `Canonical: ${parsed.canonical}` : "Enter a syllable to see its tone options"} />
       )}
     />
   );
