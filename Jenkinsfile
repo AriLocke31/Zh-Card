@@ -19,9 +19,17 @@ pipeline {
         }
     }
 
+    stage('Inspect Workspace') {
+      steps {
+        sh '''
+          echo "Current directory:"
+          pwd
+          '''
+      }
+
     stage('Install') {
       steps {
-        dir('backend') {
+        dir('src/backend') {
           sh 'npm ci'
         }
       }
@@ -29,7 +37,7 @@ pipeline {
 
     stage('Typecheck') {
       steps {
-        dir('backend') {
+        dir('src/backend') {
           sh 'npm run typecheck'
         }
       }
@@ -37,7 +45,7 @@ pipeline {
 
     stage('Build') {
       steps {
-        dir('backend') {
+        dir('src/backend') {
           sh 'npm run build'
         }
       }
@@ -45,7 +53,7 @@ pipeline {
 
     stage('Package') {
       steps {
-        dir('backend') {
+        dir('src/backend') {
           sh '''
             rm -f lambda.zip
             zip -j lambda.zip dist/index.js
@@ -56,7 +64,7 @@ pipeline {
 
     stage('Deploy') {
       steps {
-        dir('backend') {
+        dir('src/backend') {
           sh '''
             aws lambda update-function-code \
               --function-name "$LAMBDA_FUNCTION" \
