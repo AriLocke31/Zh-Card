@@ -26,6 +26,7 @@ pipeline {
           pwd
           '''
       }
+    }
 
     stage('Install') {
       steps {
