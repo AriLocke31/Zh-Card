@@ -11,7 +11,7 @@ const toTraditional = OpenCC.Converter({
 
 const toSimplified = OpenCC.Converter({
   from: "tw",
-  to: "tw",
+  to: "cn",
 });
 
 export function convertHanzi(text: string, sourceScript: HanziScript): string {

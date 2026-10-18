@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Zh-Card unauthenticated HTTP API using an existing DynamoDB table
+Parameters:
+  TableName:
+    Type: String
+    Description: Existing table with a string partition key named id and no sort key
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Description: Browser origins allowed by CORS, e.g. http://localhost:5173
+Resources:
+  WordsApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: '$default'
+      DefinitionBody:
+        openapi: '3.0.1'
+        info: { title: Zh-Card, version: '1.0' }
+        paths: {}
+      CorsConfiguration:
+        AllowOrigins: !Ref AllowedOrigins
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+        AllowHeaders: [Content-Type, If-Match]
+      # Authentication is temporarily unplugged; these routes have no authorizer.
+  WordsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs22.x
+      Handler: index.handler
+      CodeUri: ../src/backend/dist/
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref TableName
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:Scan, dynamodb:PutItem, dynamodb:DeleteItem]
+              Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}'
+      Events:
+        ListWords:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: /words, Method: GET }
+        CreateWord:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: /words, Method: POST }
+        GetWord:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: '/words/{id}', Method: GET }
+        UpdateWord:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: '/words/{id}', Method: PUT }
+        DeleteWord:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: '/words/{id}', Method: DELETE }
+Outputs:
+  ApiBaseUrl:
+    Value: !Sub 'https://${WordsApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
+  FunctionName:
+    Value: !Ref WordsFunction

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { Box, Paper, Stack, Typography, TextField, Button, IconButton, Chip, Divider, MenuItem, FormControlLabel, Checkbox, Autocomplete, Alert } from "@mui/material";
 import { WordEntry, WrittenForm, Reading, Sense, SenseTag, WordComponent, PartOfSpeech, } from "../types";
-import { isValidNumberedPinyin, parsePinyin } from "../utils/pinyin";
+import { parsePinyin } from "../utils/pinyin";
 import { convertHanzi } from "../utils/hanziConversion";
 import SenseTagInput from "./SenseTagInput";
 import PinyinInput from "./PinyinInput";
@@ -12,8 +12,10 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 
 interface WordEditorProps {
   word?: WordEntry | undefined;
-  onSave: (word: WordEntry) => void;
+  onSave: (word: WordEntry) => void | Promise<void>;
   onCancel: () => void;
+  saving?: boolean;
+  saveError?: string | null;
 }
 
 const createEmptyWord = (): WordEntry => {
@@ -45,7 +47,7 @@ const partOfSpeechOptions: PartOfSpeech[] = [
   "other",
 ];
 
-export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) {
+export default function WordEditor({ word, onSave, onCancel, saving = false, saveError }: WordEditorProps) {
   const [draft, setDraft] = useState<WordEntry>(() => structuredClone(word ?? createEmptyWord()));
   const [error, setError] = useState<string | null>(null);
 
@@ -228,6 +230,7 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
   };
 
   const handleSave = () => {
+    if (saving) return;
     const forms = draft.forms.map((form) => ({
       ...form, text: form.text.trim(),
     }));
@@ -287,10 +290,6 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
       return;
     }
 
-    if (readings.some((reading) => reading.system === "pinyin" && !isValidNumberedPinyin(reading.romanization))) {
-      setError("Select a valid Pinyin syllable and tone");
-      return;
-    }
 
     // Sense.readingIds is the editable source of truth.
     const synchronizedReadings: Reading[] = readings.map(
@@ -322,11 +321,12 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
       forms,
       readings: synchronizedReadings,
       senses,
-      updatedAt: new Date().toISOString(),
+      updatedAt: draft.updatedAt,
     });
   }
 
   return (
+    <Box component="fieldset" disabled={saving} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
     <Paper
       variant="outlined"
       sx={{
@@ -348,9 +348,9 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
         <Chip label="Draft" color="primary" />
       </Stack>
 
-      {error && (
+      {(error || saveError) && (
         <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
+          {error || saveError}
         </Alert>
       )}
 
@@ -670,9 +670,10 @@ export default function WordEditor({ word, onSave, onCancel }: WordEditorProps) 
       <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={2}>
         <Button variant="outlined" onClick={onCancel}>Cancel</Button>
 
-        <Button variant="contained" onClick={handleSave}>Save word</Button>
+        <Button variant="contained" disabled={saving} onClick={handleSave}>{saving ? "Saving…" : "Save word"}</Button>
       </Stack>
     </Paper>
+    </Box>
   );
 }
 

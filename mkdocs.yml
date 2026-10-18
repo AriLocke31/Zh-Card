@@ -1,0 +1,42 @@
+﻿site_name: Zh-Card Dev Documentation
+site_description: Architecture, implementation, operations and roadmap
+repo_name: zh-card
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - content.code.copy
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+nav:
+  - Home: index.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Data Model: architecture/data-model.md
+    - Persistence: architecture/persistence.md
+  - Codebase:
+    - Overview: codebase/overview.md
+    - Types: codebase/types.md
+    - Components: codebase/components.md
+    - Utilities and Data: codebase/utilities.md
+    - Backend and Storage: codebase/storage.md
+    - Unused-file Audit: codebase/unused-files.md
+    - Word Editor: codebase/word-editor.md
+  - Infrastructure:
+    - CI/CD: infrastructure/ci-cd.md
+    - AWS Authentication: infrastructure/aws-auth.md
+  - Development:
+    - Getting Started: development/getting-started.md
+    - Documentation Maintenance: development/documentation.md
+  - Roadmap:
+    - Status And TODOs: roadmap/index.md

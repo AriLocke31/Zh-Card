@@ -30,9 +30,17 @@ pipeline {
 
     stage('Install') {
       steps {
+        sh 'npm ci'
         dir('src/backend') {
           sh 'npm ci'
         }
+      }
+    }
+
+    stage('Frontend and Tests') {
+      steps {
+        sh 'npm test'
+        sh 'npm run build'
       }
     }
 

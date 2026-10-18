@@ -88,23 +88,20 @@ export function getToneOptions(input: string): ToneOption[] {
   if (!isValidSyllable(syllable))
     return [];
 
-  const labels = [
-    applyToneMark(syllable, 0) ? applyToneMark(syllable, 0) : "",
-    applyToneMark(syllable, 1) ? applyToneMark(syllable, 1) : "",
-    applyToneMark(syllable, 2) ? applyToneMark(syllable, 2) : "",
-    applyToneMark(syllable, 3) ? applyToneMark(syllable, 3) : "",
-    syllable
-  ]
-
   return [1, 2, 3, 4, 5].map(tone => ({
     canonical: `${syllable}${tone}`,
     display: applyToneMark(syllable, tone),
     tone,
-    label: labels[tone - 1]!,
+    label: `Tone ${tone}`,
   }));
 }
 
 export function isValidNumberedPinyin(input: string): boolean {
+  const tokens = input.trim().split(/\s+/);
+  return tokens.every(token => isValidNumberedSyllable(token));
+}
+
+function isValidNumberedSyllable(input: string): boolean {
   const match = /^([a-zü]+)([1-5])$/.exec(
     input.toLowerCase().trim()
   );
@@ -168,7 +165,7 @@ export function parsePinyin(input: string): ParsedPinyin | null {
 
   return {
     canonical: syllables
-      .map(syllable => syllable.display)
+      .map(syllable => syllable.canonical)
       .join(" "),
     display: syllables
       .map(syllable => syllable.display)
