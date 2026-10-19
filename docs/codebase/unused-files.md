@@ -35,4 +35,4 @@ The backend source/configuration and Jenkins/Docker configuration are a separate
 
 The root tsconfig currently discovers source outside the frontend graph, including the Node importer and backend. Removing disconnected code may change typechecking results even though it leaves browser behavior unchanged. Use `tsc --noEmit` for a read-only typecheck: npm build now also uses tsc --noEmit before Vite, avoiding generated files alongside source.
 
-Authentication is temporarily unplugged. src/auth/session.ts has no application importer; it and tests/auth.test.ts are deliberately retained for later restoration.
+src/auth/session.ts is active through config.ts, supplying the authenticated repository and App login controls. Keep its PKCE/refresh regression tests.

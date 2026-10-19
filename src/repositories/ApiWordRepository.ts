@@ -1,5 +1,5 @@
 import type { WordEntry } from "../types";
-import { isRecord, isWordEntry } from "../validation/word";
+import { isRecord, isStoredWordEntry } from "../validation/word";
 import type { WordRepository, WordPage } from "./WordRepository";
 
 export class ApiError extends Error {
@@ -7,11 +7,16 @@ export class ApiError extends Error {
 }
 
 export class ApiWordRepository implements WordRepository {
-  constructor(private baseUrl: string, private transport: typeof fetch = fetch) {}
+  constructor(
+    private baseUrl: string,
+    private getToken: () => Promise<string>,
+    // Native browser fetch must retain the global receiver, not the repository.
+    private transport: typeof fetch = (input, init) => globalThis.fetch(input, init),
+  ) {}
 
   private async request(path: string, init: RequestInit = {}): Promise<unknown> {
     const response = await this.transport(`${this.baseUrl.replace(/\/$/, "")}${path}`, {
-      ...init, headers: { ...init.headers,
+      ...init, headers: { ...init.headers, Authorization: `Bearer ${await this.getToken()}`,
         ...(init.body ? { "Content-Type": "application/json" } : {}) },
     });
     if (response.status === 204 && response.ok) return undefined;
@@ -23,7 +28,7 @@ export class ApiWordRepository implements WordRepository {
   }
 
   private word(value: unknown): WordEntry {
-    if (!isWordEntry(value)) throw new Error("The server returned an invalid word.");
+    if (!isStoredWordEntry(value)) throw new Error("The server returned an invalid word.");
     return value;
   }
 
@@ -34,7 +39,7 @@ export class ApiWordRepository implements WordRepository {
 
   async list(cursor?: string): Promise<WordPage> {
     const result = await this.request(`/words?limit=25${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
-    if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isWordEntry) ||
+    if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isStoredWordEntry) ||
         (result.nextCursor !== undefined && typeof result.nextCursor !== "string")) throw new Error("The server returned an invalid word list.");
     return { items: result.items, ...(typeof result.nextCursor === "string" ? { nextCursor: result.nextCursor } : {}) };
   }

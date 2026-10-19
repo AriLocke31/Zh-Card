@@ -1,4 +1,4 @@
-import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
+import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
@@ -9,15 +9,19 @@ type Command = GetCommand | PutCommand | ScanCommand | DeleteCommand;
 type Result = { Item?: Record<string, any>; Items?: Record<string, any>[]; LastEvaluatedKey?: Record<string, any> };
 
 /** Dependency injection keeps handler tests independent of AWS credentials. */
-export function createHandler(send: (command: Command) => Promise<Result>, config: { tableName: string }) {
+export function createHandler(send: (command: Command) => Promise<Result>, config: { tableName: string; ownerSub: string }) {
   const response = (statusCode: number, body?: unknown): APIGatewayProxyStructuredResultV2 => ({
     statusCode, headers: { "Content-Type": "application/json" },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  return async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> => {
+  return async (event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<APIGatewayProxyStructuredResultV2> => {
     try {
-      if (!config.tableName) return response(503, { message: "Service is not configured" });
-      // Authentication is temporarily unplugged. API routes currently accept anonymous requests.
+      if (!config.tableName || !config.ownerSub) return response(503, { message: "Service is not configured" });
+      const claims = event.requestContext.authorizer?.jwt?.claims;
+      if (!claims || claims.token_use !== "access" || typeof claims.sub !== "string" || !claims.sub) {
+        return response(401, { message: "A valid Cognito access token is required" });
+      }
+      if (claims.sub !== config.ownerSub) return response(403, { message: "Forbidden" });
       const TableName = config.tableName;
       const id = event.pathParameters?.id;
       switch (event.routeKey) {
@@ -93,5 +97,5 @@ export const handler = createHandler(async command => {
   if (command instanceof PutCommand) { await client.send(command); return {}; }
   await client.send(command); return {};
 }, {
-  tableName: process.env.TABLE_NAME ?? "",
+  tableName: process.env.TABLE_NAME ?? "", ownerSub: process.env.OWNER_SUB ?? "",
 });

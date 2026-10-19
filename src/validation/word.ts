@@ -13,12 +13,21 @@ const records = (value: unknown): value is Record<string, unknown>[] =>
   new Set(value.map(item => item.id)).size === value.length;
 const ids = (value: unknown): value is string[] => strings(value) && new Set(value).size === value.length;
 
-/** Validate nested records, unique IDs, and bidirectional reading/sense links. */
+/** Validate a complete write, including the editor's required definition. */
 export function isWordEntry(value: unknown): value is WordEntry {
+  return validateWord(value, true);
+}
+
+/** Existing records may predate the requirement to supply a definition. */
+export function isStoredWordEntry(value: unknown): value is WordEntry {
+  return validateWord(value, false);
+}
+
+function validateWord(value: unknown, requireSense: boolean): value is WordEntry {
   if (!isRecord(value) || !text(value.id) || !date(value.createdAt) || !date(value.updatedAt) ||
       !strings(value.tags) || !records(value.forms) || !records(value.readings) || !records(value.senses) || !records(value.components)) return false;
   const { forms, readings, senses, components } = value;
-  if (!forms.length || !senses.length || forms.filter(form => form.isPreferred === true).length !== 1) return false;
+  if (!forms.length || (requireSense && !senses.length) || forms.filter(form => form.isPreferred === true).length !== 1) return false;
   if (!forms.every(form => text(form.text) && typeof form.isPreferred === "boolean" &&
       oneOf(form.script, ["simplified", "traditional", "both", "variant"]))) return false;
   if (!readings.every(reading => text(reading.romanization) && optionalText(reading.display) &&

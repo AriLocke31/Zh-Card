@@ -1,6 +1,6 @@
 # Zh-Card developer documentation
 
-The dictionary now has an API-backed persistence implementation with DynamoDB CRUD; authentication is temporarily unplugged. Local tests/builds pass; deployment configuration and a live AWS round trip remain unverified.
+The dictionary now has an API-backed persistence implementation with DynamoDB CRUD and Cognito JWT login. Local tests/builds pass; deployment configuration and a live AWS round trip remain unverified.
 
 - [Architecture](architecture/overview.md)
 - [Data model](architecture/data-model.md)

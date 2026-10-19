@@ -1,10 +1,20 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Zh-Card unauthenticated HTTP API using an existing DynamoDB table
+Description: Zh-Card JWT-protected HTTP API using an existing DynamoDB table and Cognito pool
 Parameters:
   TableName:
     Type: String
     Description: Existing table with a string partition key named id and no sort key
+  OwnerSub:
+    Type: String
+    Description: Cognito user sub allowed to access the dictionary
+    Default: a448a4b8-7001-7026-be60-4ab12223fd3a
+  JwtIssuer:
+    Type: String
+    Default: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_gCGZV3F39
+  ClientId:
+    Type: String
+    Default: dtirh82840p4fm4q0rc88n5t7
   AllowedOrigins:
     Type: CommaDelimitedList
     Description: Browser origins allowed by CORS, e.g. http://localhost:5173
@@ -20,8 +30,16 @@ Resources:
       CorsConfiguration:
         AllowOrigins: !Ref AllowedOrigins
         AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
-        AllowHeaders: [Content-Type, If-Match]
-      # Authentication is temporarily unplugged; these routes have no authorizer.
+        AllowHeaders: [Authorization, Content-Type, If-Match]
+      Auth:
+        DefaultAuthorizer: ZhCardCognito
+        Authorizers:
+          ZhCardCognito:
+            IdentitySource: '$request.header.Authorization'
+            JwtConfiguration:
+              issuer: !Ref JwtIssuer
+              audience: [!Ref ClientId]
+            AuthorizationScopes: [openid]
   WordsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -33,6 +51,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref TableName
+          OWNER_SUB: !Ref OwnerSub
       Policies:
         - Version: '2012-10-17'
           Statement:

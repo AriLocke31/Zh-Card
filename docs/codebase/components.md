@@ -4,9 +4,9 @@ All components are default exports. Paths are relative to the repository root. [
 
 ## App (`src/App.tsx`)
 
-Props: none. Owns the loaded word collection, selected WordEntry or null, pagination cursor, EditorMode (`view | edit | create`), request/saving states, notifications, and deletion confirmation.
+Props: none. Owns the loaded word collection, selected WordEntry or null, pagination cursor, EditorMode (`view | edit | create`), login readiness, request/saving states, notifications, and deletion confirmation.
 
-Loads the first API page on startup, and fetches selected entries by ID. A request counter prevents obsolete load/selection responses from replacing newer state. Load more merges words by ID. New/Edit mount WordEditor with a fresh key; successful saves replace the selected/listed entry with the server response, while failures leave the draft mounted. Delete requires confirmation and sends the selected revision. Reload list returns to the first page. There are no login/logout controls; no fixture fallback or flashcard callback is wired.
+Completes the Cognito callback, loads the first API page after sign-in, and fetches selected entries by ID. A request counter prevents obsolete load/selection responses from replacing newer state. Load more merges words by ID. New/Edit mount WordEditor with a fresh key; successful saves replace the selected/listed entry with the server response, while failures leave the draft mounted. Delete requires confirmation and sends the selected revision. Reload list returns to the first page. Sign in redirects to Cognito; Sign out clears session and dictionary state; no fixture fallback or flashcard callback is wired.
 
 Connection settings come from src/config.ts. App shows an actionable configuration message if required environment values are absent. See [persistence](../architecture/persistence.md) for login, conflicts, and deployment limitations.
 

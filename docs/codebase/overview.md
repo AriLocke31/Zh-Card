@@ -7,7 +7,8 @@ This reference describes implemented source. Production rollout is tracked separ
 ```text
 index.html -> src/main.tsx -> App.tsx
   main.tsx -> theme.ts (ThemeProvider + CssBaseline)
-  App.tsx -> config.ts -> repositories/ApiWordRepository.ts
+  App.tsx -> config.ts -> auth/session.ts
+                       -> repositories/ApiWordRepository.ts
                           -> repositories/WordRepository.ts
                           -> validation/word.ts -> types.ts + utils/pinyin.ts
   App.tsx -> components/WordDetail.tsx
@@ -21,7 +22,7 @@ API Gateway -> src/backend/src/handler.ts -> validation/word.ts
                                          -> DynamoDB
 ```
 
-All four custom UI components remain active. App uses the unauthenticated HTTP repository, not mock data or browser LowDB. mockWords.ts is now a test fixture. The backend is an independently bundled entry point but shares validation/types/Pinyin source with the frontend. The OAuth module is parked and outside the application import graph.
+All four custom UI components remain active. App uses the authenticated HTTP repository, not mock data or browser LowDB. mockWords.ts is now a test fixture. The backend is an independently bundled entry point but shares validation/types/Pinyin source with the frontend. AuthSession supplies access tokens to the repository; App gates loading behind login.
 
 ## References
 

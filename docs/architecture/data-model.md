@@ -1,10 +1,10 @@
-﻿# Data model
+# Data model
 
 The complete field reference is in [codebase/types](../codebase/types.md). Runtime validation is implemented in src/validation/word.ts and used by the Lambda on writes and ApiWordRepository on successful word responses.
 
 ## Aggregate and invariants
 
-WordEntry contains written forms, readings, senses, components, word tags, and creation/update timestamps. Nested IDs must be nonempty and unique within their collections. Forms and senses must be nonempty. Exactly one form must be preferred. Every form has nonblank text and a supported script.
+WordEntry contains written forms, readings, senses, components, word tags, and creation/update timestamps. Nested IDs must be nonempty and unique within their collections. Writes require nonempty forms and senses. Reads use isStoredWordEntry, which also accepts existing records with an empty senses array so they can be opened and completed; other validation remains in place. Exactly one form must be preferred. Every form has nonblank text and a supported script.
 
 Readings must have a supported variety/system pairing (cmn/pinyin or yue/jyutping), nonblank romanization, boolean standard status, string tags, and unique sense references. Pinyin must parse with explicit tones; Jyutping currently receives only nonblank validation. Senses require definition, language, parseable creation/update dates, supported optional part of speech, valid structured tags, and unique reading references. Both directions of every sense/reading link must agree and refer to existing records. Empty reading collections are allowed.
 

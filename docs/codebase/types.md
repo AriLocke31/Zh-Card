@@ -47,7 +47,7 @@ The Pinyin utility also uses an inline `{ vowel: string; tone: number }` map val
 
 - WordPage (`src/repositories/WordRepository.ts`): items: WordEntry[], nextCursor?: string. list(cursor?) returns Promise<WordPage>; delete(id, updatedAt) requires a revision.
 - ApiWordRepository (`src/repositories/ApiWordRepository.ts`): implements WordRepository using a base URL, async access-token provider, and injectable fetch transport. ApiError extends Error with status: number.
-- AuthConfig (`src/auth/session.ts`): authorizationEndpoint, tokenEndpoint, clientId, redirectUri, scopes, all strings. The parked AuthSession provides signIn, completeSignIn, hasSession, getAccessToken, and signOut.
+- AuthConfig (`src/auth/session.ts`): authorizationEndpoint, tokenEndpoint, clientId, redirectUri, scopes, all strings. AuthSession provides signIn, completeSignIn, hasSession, getAccessToken, and signOut.
 - Tokens (private in session.ts): accessToken: string, refreshToken?: string, expiresAt: number (epoch milliseconds).
 
 See [storage](storage.md) and [persistence](../architecture/persistence.md) for lifecycle and request contracts.

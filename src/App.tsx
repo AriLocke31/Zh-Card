@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import WordDetail from "./components/WordDetail";
 import WordEditor from "./components/WordEditor";
-import { configurationError, repository } from "./config";
+import { configurationError, repository, session } from "./config";
 import type { WordEntry } from "./types";
 
 type EditorMode = "view" | "edit" | "create";
@@ -13,6 +13,7 @@ export default function App() {
   const [word, setWord] = useState<WordEntry | null>(null);
   const [cursor, setCursor] = useState<string | undefined>();
   const [mode, setMode] = useState<EditorMode>("view");
+  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +36,17 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!configurationError) void load();
-    return () => { request.current++; };
+    if (configurationError) return;
+    let active = true;
+    session.completeSignIn().then(() => { if (active) setReady(true); })
+      .catch(error => { if (active) { setError(message(error)); setReady(true); } });
+    return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (ready && session.hasSession()) void load();
+    return () => { request.current++; };
+  }, [ready]);
 
   const select = async (id: string) => {
     const current = ++request.current;
@@ -78,11 +87,17 @@ export default function App() {
   return <Container maxWidth="lg"><Box sx={{ py: 6 }}>
     <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}>
       <Typography variant="h4" component="h1">Chinese Dictionary</Typography>
+      {!configurationError && <Button disabled={!ready || busy || saving} onClick={() => {
+        if (session.hasSession()) {
+          request.current++; session.signOut(); setWords([]); setWord(null); setCursor(undefined);
+          setMode("view"); setError(null); setSaveError(null); setNotice(null); setDeleting(false);
+        } else void session.signIn().catch(error => setError(message(error)));
+      }}>{session.hasSession() ? "Sign out" : "Sign in"}</Button>}
     </Stack>
     {configurationError ? <Alert severity="warning">Dictionary connection is not configured. Set {configurationError} in .env.local using .env.example, then restart Vite.</Alert> : <>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
-      <>
+      {!ready ? <CircularProgress aria-label="Completing sign-in" /> : session.hasSession() ? <>
         {mode === "view" ? <>
           <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 3, flexWrap: "wrap" }}>
             <Button disabled={busy} onClick={() => start("create")}>New word</Button>
@@ -100,7 +115,7 @@ export default function App() {
         </> : <WordEditor key={mode === "edit" ? `edit-${word?.id}` : "create"}
           word={mode === "edit" ? word ?? undefined : undefined} saving={saving} saveError={saveError}
           onSave={handleSave} onCancel={() => { setMode("view"); setSaveError(null); }} />}
-      </>
+      </> : <Typography>Sign in to load and save your dictionary.</Typography>}
     </>}
     <Dialog open={deleting} onClose={() => { if (!busy) setDeleting(false); }}>
       <DialogTitle>Delete this word?</DialogTitle><DialogContent>This permanently removes the saved entry.</DialogContent>

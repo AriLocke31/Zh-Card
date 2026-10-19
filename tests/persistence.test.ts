@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 const { GetCommand, PutCommand, ScanCommand, DeleteCommand } = createRequire(new URL("../src/backend/package.json", import.meta.url))("@aws-sdk/lib-dynamodb");
 import { ApiWordRepository, ApiError } from "../src/repositories/ApiWordRepository";
 import { mockWord } from "../src/data/mockWords";
-import { isWordEntry } from "../src/validation/word";
+import { isWordEntry, isStoredWordEntry } from "../src/validation/word";
 import { parsePinyin, isValidNumberedPinyin, getToneOptions } from "../src/utils/pinyin";
 import { convertHanzi } from "../src/utils/hanziConversion";
 
@@ -38,24 +38,54 @@ function database() {
   return { items, commands, send };
 }
 const event = (routeKey: string, extra: any = {}) => ({
-  routeKey, requestContext: {}, headers: {}, ...extra,
+  routeKey, requestContext: { authorizer: { jwt: { claims: { sub: "owner", token_use: "access" } } } }, headers: {}, ...extra,
 }) as any;
 const fixture = () => structuredClone(mockWord);
 
+test("existing words without definitions can be listed and opened, but not saved incomplete", async () => {
+  const word = { ...fixture(), senses: [], readings: [], components: [], tags: [] };
+  assert.equal(isStoredWordEntry(word), true);
+  assert.equal(isWordEntry(word), false);
+  const repository = new ApiWordRepository("https://example.test", async () => "access-token", async input =>
+    Response.json(new URL(String(input)).pathname === "/words" ? { items: [word] } : word));
+  assert.deepEqual((await repository.list()).items, [word]);
+  assert.deepEqual(await repository.getById(word.id), word);
+  const db = database();
+  const handler = createHandler(db.send, { tableName: "words", ownerSub: "owner" });
+  assert.equal((await handler(event("POST /words", { body: JSON.stringify(word) }))).statusCode, 400);
+  assert.equal(db.commands.length, 0);
+  assert.equal(isStoredWordEntry({ ...word, forms: [{}] }), false);
+});
+
+test("default transport calls browser fetch with the global receiver", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async function (this: unknown, input) {
+    assert.equal(this, globalThis);
+    assert.equal(String(input), "https://example.test/words?limit=25");
+    return Response.json({ items: [] });
+  };
+  try {
+    const repository = new ApiWordRepository("https://example.test", async () => "access-token");
+    assert.deepEqual(await repository.list(), { items: [] });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("repository and handler persist create/read/update/delete across repository instances", async () => {
   const db = database();
-  const handler = createHandler(db.send, { tableName: "words" });
+  const handler = createHandler(db.send, { tableName: "words", ownerSub: "owner" });
   const transport: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
     const id = url.pathname.split("/")[2];
     const headers = Object.fromEntries(new Headers(init?.headers).entries());
-    assert.equal(headers.authorization, undefined);
+    assert.equal(headers.authorization, "Bearer access-token");
     const route = `${init?.method ?? "GET"} ${id ? "/words/{id}" : "/words"}`;
     const response = await handler(event(route, { pathParameters: id ? { id: decodeURIComponent(id) } : {},
       queryStringParameters: Object.fromEntries(url.searchParams), headers, body: init?.body }));
     return new Response(response.body ?? null, { status: response.statusCode!, headers: response.headers as any });
   };
-  const repository = () => new ApiWordRepository("https://example.test", transport);
+  const repository = () => new ApiWordRepository("https://example.test", async () => "access-token", transport);
   const original = fixture();
   const created = await repository().create(original);
   assert.notEqual(created.id, original.id);
@@ -81,7 +111,7 @@ test("repository and handler persist create/read/update/delete across repository
 
 test("pagination has no missing entries; invalid requests never write", async () => {
   const db = database();
-  const handler = createHandler(db.send, { tableName: "words" });
+  const handler = createHandler(db.send, { tableName: "words", ownerSub: "owner" });
   for (let i = 0; i < 3; i++) assert.equal((await handler(event("POST /words", { body: JSON.stringify(fixture()) }))).statusCode, 201);
   const first = JSON.parse((await handler(event("GET /words", { queryStringParameters: { limit: "2" } }))).body!);
   const second = JSON.parse((await handler(event("GET /words", { queryStringParameters: { limit: "2", cursor: first.nextCursor } }))).body!);
@@ -126,17 +156,30 @@ test("Pinyin round trips phrases, accents and neutral tones; Hanzi converts both
 });
 
 test("repository rejects malformed success responses and preserves API errors", async () => {
-  const invalid = new ApiWordRepository("https://example.test", async () => Response.json({ items: [{}] }));
+  const invalid = new ApiWordRepository("https://example.test", async () => "access-token", async () => Response.json({ items: [{}] }));
   await assert.rejects(invalid.list(), /invalid word list/);
-  const forbidden = new ApiWordRepository("https://example.test", async () => Response.json({ message: "Forbidden" }, { status: 403 }));
+  const forbidden = new ApiWordRepository("https://example.test", async () => "access-token", async () => Response.json({ message: "Forbidden" }, { status: 403 }));
   await assert.rejects(forbidden.list(), (error: any) => error.status === 403 && error.message === "Forbidden");
 });
 
-test("anonymous access needs only table configuration", async () => {
+test("all routes reject missing JWT claims, ID tokens, and other owners before accessing DynamoDB", async () => {
   const db = database();
-  const handler = createHandler(db.send, { tableName: "words" });
-  assert.equal((await handler(event("POST /words", { body: JSON.stringify(fixture()) }))).statusCode, 201);
+  const handler = createHandler(db.send, { tableName: "words", ownerSub: "owner" });
+  for (const route of ["GET /words", "GET /words/{id}", "POST /words", "PUT /words/{id}", "DELETE /words/{id}"]) {
+    assert.equal((await handler(event(route, { requestContext: {} }))).statusCode, 401);
+    assert.equal((await handler(event(route, { requestContext: { authorizer: { jwt: { claims: { sub: "owner", token_use: "id" } } } } }))).statusCode, 401);
+    assert.equal((await handler(event(route, { requestContext: { authorizer: { jwt: { claims: { sub: "another-user", token_use: "access" } } } } }))).statusCode, 403);
+  }
+  assert.equal(db.commands.length, 0);
   assert.equal((await handler(event("GET /words"))).statusCode, 200);
-  const unconfigured = createHandler(db.send, { tableName: "" });
+  const unconfigured = createHandler(db.send, { tableName: "words", ownerSub: "" });
   assert.equal((await unconfigured(event("GET /words"))).statusCode, 503);
+});
+
+test("a missing session never sends an API request", async () => {
+  let called = false;
+  const repository = new ApiWordRepository("https://example.test", async () => { throw new Error("Sign in first"); },
+    async () => { called = true; return Response.json({ items: [] }); });
+  await assert.rejects(repository.list(), /Sign in first/);
+  assert.equal(called, false);
 });

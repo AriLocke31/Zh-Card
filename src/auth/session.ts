@@ -1,4 +1,3 @@
-// Parked for later: not imported by the app while authentication is unplugged.
 export interface AuthConfig {
   authorizationEndpoint: string;
   tokenEndpoint: string;

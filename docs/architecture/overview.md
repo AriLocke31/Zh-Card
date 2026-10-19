@@ -1,20 +1,20 @@
 # System architecture
 
-Status: persistence is implemented in source; authentication is temporarily unplugged and tested locally. Production configuration, deployment, and a live browser-to-DynamoDB round trip remain unverified.
+Status: persistence and Cognito JWT authentication are implemented in source and tested locally. Production configuration, deployment, and a live browser-to-DynamoDB round trip remain unverified.
 
 ```mermaid
 flowchart LR
     User --> UI[React / Material UI]
     UI --> Repo[ApiWordRepository]
-    Repo -->|Anonymous HTTP| API[API Gateway HTTP API]
-    API --> Lambda[Word handler]
+    Repo -->|Bearer access token| API[API Gateway JWT authorizer]
+    API --> Lambda[Word handler / owner check]
     Lambda --> DB[(Existing DynamoDB table)]
     Jenkins -->|bundle and deploy| Lambda
 ```
 
 The browser loads a paginated dictionary, fetches selected entries, and creates/updates/deletes words through the API. There is no mock-data fallback. Written forms, readings, senses, components, tags, and timestamps travel as one WordEntry aggregate. Editor drafts stay local until a successful response replaces them with server data.
 
-The table is a shared dictionary with a string partition key named id and no sort key. There is currently no application authentication or ownership enforcement. The retained OAuth module is disconnected. Existing API Gateway authorizers must be disabled separately for anonymous access.
+The table is a shared dictionary with a string partition key named id and no sort key. API Gateway validates Cognito JWTs; Lambda requires access-token claims and the configured OWNER_SUB. The browser signs in through Cognito with authorization-code/PKCE. Attach the existing authorizer to all five Gateway routes; source changes do not update deployed Gateway configuration.
 
 [Persistence](persistence.md) describes HTTP contracts, conditional writes, auth, and setup. [Data model](data-model.md) describes invariants. [Roadmap](../roadmap/index.md) distinguishes implemented source from outstanding rollout and product work.
 
