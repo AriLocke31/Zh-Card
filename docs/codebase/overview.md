@@ -5,14 +5,15 @@ This reference describes implemented source. Production rollout is tracked separ
 ## Entry and module graph
 
 ```text
-index.html -> src/main.tsx -> App.tsx
+index.html -> src/main.tsx -> BrowserRouter -> App.tsx
   main.tsx -> theme.ts (ThemeProvider + CssBaseline)
   App.tsx -> config.ts -> auth/session.ts
                        -> repositories/ApiWordRepository.ts
                           -> repositories/WordRepository.ts
                           -> validation/word.ts -> types.ts + utils/pinyin.ts
-  App.tsx -> components/WordDetail.tsx
-          -> components/WordEditor.tsx
+  App.tsx -> pages/WordsPage.tsx -> components/WordThumb.tsx
+          -> pages/WordPage.tsx -> components/WordDetail.tsx
+                               -> components/WordEditor.tsx
              -> components/PinyinInput.tsx -> utils/pinyin.ts
              -> components/SenseTagInput.tsx
              -> utils/hanziConversion.ts
@@ -22,7 +23,7 @@ API Gateway -> src/backend/src/handler.ts -> validation/word.ts
                                          -> DynamoDB
 ```
 
-All four custom UI components remain active. App uses the authenticated HTTP repository, not mock data or browser LowDB. mockWords.ts is now a test fixture. The backend is an independently bundled entry point but shares validation/types/Pinyin source with the frontend. AuthSession supplies access tokens to the repository; App gates loading behind login.
+All existing custom UI components remain active alongside WordThumb and the two routed pages. App uses the authenticated HTTP repository, not mock data or browser LowDB. mockWords.ts is now a test fixture. The backend is an independently bundled entry point but shares validation/types/Pinyin source with the frontend. AuthSession supplies access tokens to the repository; App gates loading behind login.
 
 ## References
 
@@ -34,3 +35,5 @@ All four custom UI components remain active. App uses the authenticated HTTP rep
 - [Prototype and unused-file audit](unused-files.md)
 
 The root TypeScript configuration also discovers backend/prototype/tests source; typecheck inclusion is not evidence of browser reachability. npm build uses tsc --noEmit before bundling with Vite.
+
+Browser routes are /words, /words/new, and /words/:id. Hosting must serve index.html for direct requests to these frontend paths; the API Gateway routes remain unchanged. Vite handles this fallback locally.

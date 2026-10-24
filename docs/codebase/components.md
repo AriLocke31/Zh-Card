@@ -4,11 +4,25 @@ All components are default exports. Paths are relative to the repository root. [
 
 ## App (`src/App.tsx`)
 
-Props: none. Owns the loaded word collection, selected WordEntry or null, pagination cursor, EditorMode (`view | edit | create`), login readiness, request/saving states, notifications, and deletion confirmation.
+Props: none. Owns login readiness, authentication errors, and the saving flag that disables navigation during mutations. BrowserRouter is mounted in main.tsx. App completes the Cognito callback before rendering routes, preserving callback query processing before the root redirects to /words.
 
-Completes the Cognito callback, loads the first API page after sign-in, and fetches selected entries by ID. A request counter prevents obsolete load/selection responses from replacing newer state. Load more merges words by ID. New/Edit mount WordEditor with a fresh key; successful saves replace the selected/listed entry with the server response, while failures leave the draft mounted. Delete requires confirmation and sends the selected revision. Reload list returns to the first page. Sign in redirects to Cognito; Sign out clears session and dictionary state; no fixture fallback or flashcard callback is wired.
+The header shows a centered ?? h1 in a bold Chinese serif stack. Beneath it, four equal-width text options?Words, Create, Articles, Account?sit above a single thin horizontal rule. The active route uses dark red text (#8b1e1e). Header controls use transparent backgrounds. Articles (/articles) is a placeholder; Account opens UserPopup. The mahjong tile remains the favicon. A signed-in root or unknown route redirects to /words. Login gates the routed content; sign-out unmounts page data. There is no fixture fallback.
 
-Connection settings come from src/config.ts. App shows an actionable configuration message if required environment values are absent. See [persistence](../architecture/persistence.md) for login, conflicts, and deployment limitations.
+## WordsPage (src/pages/WordsPage.tsx)
+
+WordsPageProps requires repository: WordRepository. Loads one GET /words page at a time (25 records per repository request) and renders a responsive two/three/five-column grid of WordThumb components. Shows loading, empty, and error/retry states; there is no content heading or Refresh button. Pending pages do not show the previous page's cards. Effect cleanup ignores outdated/unmounted responses.
+
+The current opaque cursor is encoded in the URL query. Previously visited cursors are stored in browser navigation state for Previous; Next uses WordPage.nextCursor and replaces the visible grid rather than appending records. Previous is disabled on the first page and Next when nextCursor is absent. Direct cursor links without previous history can return to the first page. Cursor pagination does not infer a total count or stable ordering from DynamoDB Scan.
+
+## WordThumb (src/components/WordThumb.tsx)
+
+WordThumbProps: word: WordEntry, returnTo?: string (default /words), returnState?: unknown. A transparent, borderless Box renders as a real React Router link to /words/:id, encoding the ID. It shows only the preferred WrittenForm.text, falling back to the first form and then '-'. Native link behavior supports keyboard navigation and opening a detail page in another tab.
+
+returnTo/returnState retain the list URL and pagination history so Back to words can restore the originating grid page. They add no visible metadata to the thumbnail.
+
+## WordPage (src/pages/WordPage.tsx)
+
+WordPageProps requires repository: WordRepository and onSavingChange: (saving: boolean) => void; creating?: boolean defaults to false. /words/:id fetches the word independently and renders WordDetail with edit/delete actions. /words/new starts WordEditor with a blank draft. Creation navigates to the server-generated ID; updates retain their detail route. API failures leave editor drafts mounted. Delete confirms and returns to the originating list page. The list refetches on return, reflecting mutations.
 
 ## WordDetail (`src/components/WordDetail.tsx`)
 
@@ -41,3 +55,13 @@ Pinyin canonical values use numbered syllables; tone-marked display and explicit
 Private `SenseTagInputProps` has one required prop: `onAdd: (tag: SenseTag) => void`.
 
 Owns a category (initially register) and text value. Offers all six SenseTag categories. Add or Enter trims the value, ignores blanks, calls onAdd, and clears the text while retaining the category. The button is disabled for whitespace-only input. Duplicate detection belongs to WordEditor; this component does not perform it.
+
+## UserPopup (src/components/UserPopup.tsx)
+
+UserPopupProps requires loggedIn: boolean, onSignIn: () => void, and onSignOut: () => void; disabled?: boolean defaults to false. An optional label: string replaces the default AccountCircle IconButton with a text button. The trigger opens a Material UI Menu with an Account placeholder link and either Sign in or Sign out according to loggedIn. Selecting an action closes the menu before invoking the callback. The Account link has an empty destination and prevents navigation until an account page is implemented. The trigger exposes its menu/expanded state to assistive technology.
+
+The existing theme in src/theme.ts now gives MuiButton and MuiIconButton white backgrounds and black text, with a light-gray hover state and muted disabled text. Active navigation is indicated by an inset underline.
+
+WordThumb uses a bold Chinese serif font stack (Noto Serif CJK SC, Noto Serif SC, Source Han Serif SC, Songti SC, SimSun, serif), centered text, and red underlining on hover and keyboard focus. It has no card background, border, or shadow. Fonts are used when installed; no remote font is loaded. Noto Serif CJK SC can be downloaded from https://github.com/notofonts/noto-cjk/tree/main/Serif.
+
+On Create, WordPage hides Back to words and shows a right-aligned Create selector above the editor. CreationType is Word | Article | Sentence, defaulting to Word. Article and Sentence currently display explicit unavailable-editor placeholders. WordEditor stays mounted but hidden for these selections, preserving the Word draft; selection is disabled during saving. Existing detail pages retain Back to words.

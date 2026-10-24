@@ -39,3 +39,7 @@ The local partOfSpeechOptions list mirrors all PartOfSpeech values.
 Existing IDs and createdAt values are retained. Incoming Reading.senseIds are replaced rather than validated. This pipeline does not enforce all possible domain invariants, such as unique IDs or exactly one preferred form in arbitrary input.
 
 Pinyin normalization stores numbered, whitespace-separated canonical syllables and generates tone-marked display. Server validation additionally checks nested IDs, exactly one preferred form, field types, and bidirectional references. See [persistence](../architecture/persistence.md).
+
+## Presentation
+
+Word Editor and Draft appear in a space-between row above the main form border. The form and nested panels are transparent, square-cornered, and bordered in black. Section dividers extend edge-to-edge across the main panel. Input containers and buttons are transparent and square; button shadows are removed. These styles are scoped to WordEditor rather than changing other application forms.

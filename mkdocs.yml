@@ -28,6 +28,7 @@ nav:
     - Overview: codebase/overview.md
     - Types: codebase/types.md
     - Components: codebase/components.md
+    - App Branding: codebase/branding.md
     - Utilities and Data: codebase/utilities.md
     - Backend and Storage: codebase/storage.md
     - Unused-file Audit: codebase/unused-files.md

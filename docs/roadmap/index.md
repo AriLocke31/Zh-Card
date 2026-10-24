@@ -11,7 +11,8 @@ Updated 2026-10-19. Checked items describe implemented source or local checks, n
 - [x] JWT-protected, owner-only Lambda CRUD routes, JSON responses, paginated listing, and conditional update/delete revision checks.
 - [x] Typed HTTP repository, response validation, error propagation, and GET-not-found handling.
 - [x] Cognito login/PKCE, refresh, authenticated repository headers, access-token/owner enforcement, and SAM JWT authorizer restored.
-- [x] API-backed App list/load/select/create/edit/delete, loading/saving/error/success states, and delete confirmation.
+- [x] Words-first navigation with /words grid, /words/:id details, and /words/new editor. WordThumb shows preferred Hanzi only; cursor-based Next/Previous and return-to-page navigation use GET /words.
+- [x] API-backed loading/saving/error/success states and delete confirmation.
 - [x] Draft retention on failed saves; controls disabled during submission; server ID/timestamps used after success.
 - [x] Optional SAM API/Lambda template with existing table/provider parameters, scoped IAM, JWT authorization, and CORS.
 - [x] Automated mocked persistence/auth/schema/normalization tests; frontend and Lambda builds and typechecks pass locally.
@@ -42,7 +43,11 @@ Updated 2026-10-19. Checked items describe implemented source or local checks, n
 - [ ] Flashcard generation, deck management/filtering, review scheduling, and example-sentence workflows.
 - [ ] Multi-user ownership/schema design; current endpoints are limited to one configured owner subject.
 - [ ] Request timeouts/cancellation, retry policy, payload-size handling, telemetry, alarms, backups, and documented rollback.
+- [ ] Browser interaction tests for cursor-grid pagination, return-to-page navigation, and direct detail links; configure SPA fallback on production hosting.
 - [ ] Frontend bundle splitting; OpenCC contributes to the current large-chunk build warning.
 - [ ] Retire prototype code/data after reviewing the [unused-file audit](../codebase/unused-files.md).
 
 Roles Anywhere/Jenkins AWS authentication was previously reported working; it was not reverified against AWS during this implementation. [Persistence details and acceptance steps](../architecture/persistence.md) describe the implementation and its deployment boundaries.
+
+- [x] Create-page Word/Article/Sentence selector, with WordEditor as default and draft preservation across selections.
+- [ ] Implement ArticleEditor and SentenceEditor and their persistence; current selections show placeholders.

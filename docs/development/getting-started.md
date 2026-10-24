@@ -32,3 +32,7 @@ The documentation server uses http://127.0.0.1:8000/. Use --site-dir with a temp
 ## Acceptance
 
 Local automated tests use fake DynamoDB/OAuth transports. After configuring and deploying, perform the live create/reload/update/reload/delete checks in [persistence](../architecture/persistence.md). UI automation and production verification remain on the [roadmap](../roadmap/index.md).
+
+## Frontend routes
+
+Words (/words) is the first navigation item. /words/:id opens details; /words/new creates an entry. Production frontend hosting must rewrite these paths to index.html, without rewriting static assets or API calls. Vite provides SPA fallback locally. The Cognito callback can remain the origin root; authentication completes before redirecting to /words.

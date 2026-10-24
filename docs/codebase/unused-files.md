@@ -14,7 +14,7 @@ Traced local imports from index.html -> src/main.tsx, inspected all source impor
 | `main.js` | No frontend import or npm script; only initializes LowDB with a posts default. | package.json still declares it as main. Remove/update that declaration when retiring the file. It is not the Vite entry. |
 | `main.py` | No application, package script, or CI references. | Standalone vocabulary shuffle utility. It opens all_words.md relative to the current directory, whereas the checked-in input is under src/. Can be retired if no longer run manually. |
 
-After retiring all three LowDB modules (`src/data.ts`, `src/index.ts`, `main.js`), lowdb has no remaining source consumer. Remove the dependency and update the lockfile together in that cleanup. react-router-dom is also declared but has no current source imports. tsx is now used by npm test and must be retained.
+After retiring all three LowDB modules (`src/data.ts`, `src/index.ts`, `main.js`), lowdb has no remaining source consumer. Remove the dependency and update the lockfile together in that cleanup. react-router-dom now powers the browser routes, navigation, and thumbnail links; retain it. tsx is now used by npm test and must be retained.
 
 ## Disconnected files requiring a decision
 

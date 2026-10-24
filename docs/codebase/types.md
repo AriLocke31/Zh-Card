@@ -31,7 +31,7 @@ These interfaces have no consumers in the current application; retain them if th
 
 | Declaration | Location and contract |
 | --- | --- |
-| `EditorMode` | `src/App.tsx`: private `"view" \| "edit" \| "create"` state. See [components](components.md). |
+| `WordThumbProps`, `WordsPageProps`, `WordPageProps` | Thumbnail and routed-page contracts; see [components](components.md). Routes replace the former App EditorMode state. |
 | `WordDetailsProps`, `WordEditorProps`, `PinyinInputProps`, `SenseTagInputProps` | Private component contracts, documented in [components](components.md) and [Word Editor](word-editor.md). The detail interface is named `WordDetailsProps` although the component is singular. |
 | `HanziScript` | `src/utils/hanziConversion.ts`: `"simplified" \| "traditional"`. Narrower than WrittenForm.script. |
 | `ToneOption` | `src/utils/pinyin.ts`: `canonical: string`, `display: string`, `tone: number`, `label: string`. Canonical is one numbered syllable; generated tones are 1-5, although the type permits any number. |
@@ -51,3 +51,5 @@ The Pinyin utility also uses an inline `{ vowel: string; tone: number }` map val
 - Tokens (private in session.ts): accessToken: string, refreshToken?: string, expiresAt: number (epoch milliseconds).
 
 See [storage](storage.md) and [persistence](../architecture/persistence.md) for lifecycle and request contracts.
+
+UserPopupProps (src/components/UserPopup.tsx): loggedIn: boolean, disabled?: boolean, onSignIn: () => void, onSignOut: () => void. See the component reference for menu behavior.

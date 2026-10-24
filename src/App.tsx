@@ -1,126 +1,67 @@
-import { useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import WordDetail from "./components/WordDetail";
-import WordEditor from "./components/WordEditor";
+import { useEffect, useState } from "react";
+import { Alert, Box, Button, CircularProgress, Container, Typography } from "@mui/material";
+import UserPopup from "./components/UserPopup";
+import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import WordsPage from "./pages/WordsPage";
+import WordPage from "./pages/WordPage";
 import { configurationError, repository, session } from "./config";
-import type { WordEntry } from "./types";
-
-type EditorMode = "view" | "edit" | "create";
-const message = (error: unknown) => error instanceof Error ? error.message : "The request failed. Please try again.";
+import { printedInkSx } from "./styles/printedInk";
 
 export default function App() {
-  const [words, setWords] = useState<WordEntry[]>([]);
-  const [word, setWord] = useState<WordEntry | null>(null);
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [mode, setMode] = useState<EditorMode>("view");
   const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const request = useRef(0);
-
-  const load = async (next?: string) => {
-    const current = ++request.current;
-    setBusy(true); setError(null);
-    try {
-      const page = await repository.list(next);
-      if (current !== request.current) return;
-      setWords(previous => next ? [...new Map([...previous, ...page.items].map(item => [item.id, item])).values()] : page.items);
-      setCursor(page.nextCursor);
-      if (!next) setWord(page.items[0] ?? null);
-    } catch (error) { if (current === request.current) setError(message(error)); }
-    finally { if (current === request.current) setBusy(false); }
-  };
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (configurationError) return;
     let active = true;
     session.completeSignIn().then(() => { if (active) setReady(true); })
-      .catch(error => { if (active) { setError(message(error)); setReady(true); } });
+      .catch(error => { if (active) { setError(error instanceof Error ? error.message : "Could not sign in."); setReady(true); } });
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    if (ready && session.hasSession()) void load();
-    return () => { request.current++; };
-  }, [ready]);
-
-  const select = async (id: string) => {
-    const current = ++request.current;
-    setBusy(true); setError(null); setNotice(null);
-    try {
-      const selected = await repository.getById(id);
-      if (current !== request.current) return;
-      setWord(selected);
-      if (!selected) setError("This word no longer exists. Reload the list.");
-    } catch (error) { if (current === request.current) setError(message(error)); }
-    finally { if (current === request.current) setBusy(false); }
-  };
-
-  const handleSave = async (draft: WordEntry) => {
-    if (saving) return;
-    setSaving(true); setSaveError(null);
-    try {
-      const saved = mode === "create" ? await repository.create(draft) : await repository.update(draft);
-      setWord(saved);
-      setWords(previous => [saved, ...previous.filter(item => item.id !== saved.id)]);
-      setMode("view"); setNotice("Word saved.");
-    } catch (error) { setSaveError(message(error)); }
-    finally { setSaving(false); }
-  };
-
-  const remove = async () => {
-    if (!word || busy) return;
-    setBusy(true); setError(null);
-    try {
-      await repository.delete(word.id, word.updatedAt);
-      setWords(previous => previous.filter(item => item.id !== word.id));
-      setWord(null); setDeleting(false); setNotice("Word deleted.");
-    } catch (error) { setDeleting(false); setError(message(error)); }
-    finally { setBusy(false); }
-  };
-
-  const start = (mode: EditorMode) => { setMode(mode); setSaveError(null); setNotice(null); };
   return <Container maxWidth="lg"><Box sx={{ py: 6 }}>
-    <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-      <Typography variant="h4" component="h1">Chinese Dictionary</Typography>
-      {!configurationError && <Button disabled={!ready || busy || saving} onClick={() => {
-        if (session.hasSession()) {
-          request.current++; session.signOut(); setWords([]); setWord(null); setCursor(undefined);
-          setMode("view"); setError(null); setSaveError(null); setNotice(null); setDeleting(false);
-        } else void session.signIn().catch(error => setError(message(error)));
-      }}>{session.hasSession() ? "Sign out" : "Sign in"}</Button>}
-    </Stack>
+    <Box component="header" sx={{ mb: 4, color: "#241b12" }}>
+      <Typography component="h1" sx={{
+        ...printedInkSx,
+        m: 0, mb: 2, textAlign: "center", fontSize: { xs: "3.5rem", sm: "5rem" },
+        fontFamily: '"Noto Serif CJK SC", "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif',
+        fontWeight: 900, lineHeight: 1.2, letterSpacing: "0.12em", textIndent: "0.12em",
+      }}>{"\u4e2d\u7eb8"}</Typography>
+      <Box component="nav" aria-label="Main navigation" sx={{
+        display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        borderBottom: "1px solid currentColor", py: 0.75,
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        "& > a, & > button": {
+          minWidth: 0, p: "8px 4px", border: 0, borderRadius: 0, boxShadow: "none",
+          backgroundColor: "transparent", color: "inherit", fontFamily: "inherit",
+          fontSize: { xs: "1rem", sm: "1.15rem" }, textTransform: "none", fontWeight: 400,
+          "&:hover, &:focus-visible": {
+            backgroundColor: "transparent", textDecoration: "underline", textDecorationColor: "#b22222",
+            textUnderlineOffset: "0.25em",
+          },
+          "&.active": { color: "#8b1e1e" },
+          "&.Mui-disabled": { backgroundColor: "transparent", color: "rgba(36, 27, 18, 0.38)" },
+        },
+      }}>
+        <Button component={NavLink} to="/words" end disabled={saving}>Words</Button>
+        <Button component={NavLink} to="/words/new" disabled={saving || !ready || !session.hasSession()}>Create</Button>
+        <Button component={NavLink} to="/articles" disabled={saving}>Articles</Button>
+        <UserPopup label="Account" loggedIn={session.hasSession()} disabled={Boolean(configurationError) || !ready || saving}
+          onSignOut={() => { session.signOut(); setError(null); navigate("/words"); }}
+          onSignIn={() => { void session.signIn().catch(error => setError(error instanceof Error ? error.message : "Could not sign in.")); }} />
+      </Box>
+    </Box>
     {configurationError ? <Alert severity="warning">Dictionary connection is not configured. Set {configurationError} in .env.local using .env.example, then restart Vite.</Alert> : <>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
-      {!ready ? <CircularProgress aria-label="Completing sign-in" /> : session.hasSession() ? <>
-        {mode === "view" ? <>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 3, flexWrap: "wrap" }}>
-            <Button disabled={busy} onClick={() => start("create")}>New word</Button>
-            <Button disabled={busy || !word} onClick={() => start("edit")}>Edit word</Button>
-            <Button disabled={busy || !word} color="error" onClick={() => setDeleting(true)}>Delete word</Button>
-            <Button disabled={busy} onClick={() => void load()}>Reload list</Button>
-            {cursor && <Button disabled={busy} onClick={() => void load(cursor)}>Load more</Button>}
-          </Stack>
-          {words.length > 0 && <TextField select fullWidth label="Word" value={word?.id ?? ""} disabled={busy}
-            onChange={event => void select(event.target.value)} sx={{ mb: 3 }}>
-            {words.map(item => <MenuItem key={item.id} value={item.id}>{item.forms.find(form => form.isPreferred)?.text ?? item.forms[0]?.text}</MenuItem>)}
-          </TextField>}
-          {busy && <CircularProgress aria-label="Loading dictionary" />}
-          {word ? <WordDetail word={word} /> : !busy && !error && <Typography>No word selected. Choose a word or create one.</Typography>}
-        </> : <WordEditor key={mode === "edit" ? `edit-${word?.id}` : "create"}
-          word={mode === "edit" ? word ?? undefined : undefined} saving={saving} saveError={saveError}
-          onSave={handleSave} onCancel={() => { setMode("view"); setSaveError(null); }} />}
-      </> : <Typography>Sign in to load and save your dictionary.</Typography>}
+      {!ready ? <CircularProgress aria-label="Completing sign-in" /> : session.hasSession() ? <Routes>
+        <Route path="/articles" element={<Typography>Articles are coming soon.</Typography>} />
+        <Route path="/words" element={<WordsPage repository={repository} />} />
+        <Route path="/words/new" element={<WordPage key="new" repository={repository} creating onSavingChange={setSaving} />} />
+        <Route path="/words/:id" element={<WordPage repository={repository} onSavingChange={setSaving} />} />
+        <Route path="*" element={<Navigate to="/words" replace />} />
+      </Routes> : <Typography>Sign in to load and save your dictionary.</Typography>}
     </>}
-    <Dialog open={deleting} onClose={() => { if (!busy) setDeleting(false); }}>
-      <DialogTitle>Delete this word?</DialogTitle><DialogContent>This permanently removes the saved entry.</DialogContent>
-      <DialogActions><Button disabled={busy} onClick={() => setDeleting(false)}>Cancel</Button>
-        <Button color="error" disabled={busy} onClick={() => void remove()}>Delete</Button></DialogActions>
-    </Dialog>
   </Box></Container>;
 }

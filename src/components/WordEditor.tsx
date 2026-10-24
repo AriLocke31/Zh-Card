@@ -326,28 +326,22 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
   }
 
   return (
-    <Box component="fieldset" disabled={saving} sx={{ border: 0, p: 0, m: 0, minWidth: 0 }}>
-    <Paper
-      variant="outlined"
-      sx={{
-        maxWidth: 600,
-        mx: "auto",
-        p: { xs: 2, sm: 4 },
-        borderRadius: 3,
-      }}
-    >
-      {/* Header */}
-
-      <Stack direction="row" sx={{ mb: 4, justifyContent: "space-between", alignItems: "center" }}>
-        <Box>
-          <Typography variant="h4">{word ? "Edit word" : "New word"}</Typography>
-
-          <Typography color="text.secondary">Manage dictionary information</Typography>
-        </Box>
-
-        <Chip label="Draft" color="primary" />
+    <Box component="fieldset" disabled={saving} sx={{
+      border: 0, p: 0, m: 0, minWidth: 0, maxWidth: 600, mx: "auto",
+      "& .MuiPaper-root": { backgroundColor: "transparent", backgroundImage: "none", borderRadius: 0, borderColor: "#000", boxShadow: "none" },
+      "& .MuiInputBase-root": { backgroundColor: "transparent", borderRadius: 0 },
+      "& .MuiButton-root, & .MuiIconButton-root": {
+        backgroundColor: "transparent", borderRadius: 0, border: "1px solid #000", boxShadow: "none",
+        "&:hover, &.Mui-disabled": { backgroundColor: "transparent", boxShadow: "none" },
+      },
+    }}>
+      <Stack direction="row" sx={{ mb: 2, justifyContent: "space-between", alignItems: "baseline" }}>
+        <Typography variant="h4" component="h2">Word Editor</Typography>
+        <Typography component="span" variant="body2">Draft</Typography>
       </Stack>
-
+      <Paper variant="outlined" sx={{
+        p: { xs: 2, sm: 4 }, borderRadius: 0, border: "1px solid #000", backgroundColor: "transparent",
+      }}>
       {(error || saveError) && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error || saveError}
@@ -356,7 +350,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       {/* Written forms */}
 
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h5" gutterBottom>Written forms</Typography>
         <Button startIcon={<AddIcon />} onClick={addForm} variant="outlined">ADD</Button>
       </Stack>
@@ -372,7 +366,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
           const showSuggestion = targetScript !== null && suggestion.length > 0 && suggestion !== form.text && !targetAlreadyExists;
 
           return (
-            <Paper key={form.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Paper key={form.id} variant="outlined" sx={{ p: 2, borderRadius: 0 }}>
               <Stack spacing={1}>
                 <Stack direction="row" spacing={2} useFlexGap>
                   <TextField sx={{ flex: 1 }}
@@ -430,18 +424,18 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       </Stack>
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       {/* Pronunciations */}
 
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h5" gutterBottom>Pronunciations</Typography>
         <Button startIcon={<AddIcon />} onClick={addReading} variant="outlined">ADD</Button>
       </Stack>
 
       <Stack spacing={1} sx={{ mt: 2 }}>
         {draft.readings.map((reading) => (
-          <Paper key={reading.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+          <Paper key={reading.id} variant="outlined" sx={{ p: 2, borderRadius: 0 }}>
             <Stack spacing={2}>
               <Stack direction="row" spacing={2}>
                 <TextField select label="Language variety" value={reading.variety}
@@ -516,18 +510,18 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       </Stack>
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       {/* Definitions */}
 
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h5" gutterBottom>Definitions</Typography>
         <Button startIcon={<AddIcon />} onClick={addSense} variant="outlined">ADD</Button>
       </Stack>
 
       <Stack spacing={2} sx={{ mt: 2 }}>
         {draft.senses.map((sense, index) => (
-          <Paper key={sense.id} variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+          <Paper key={sense.id} variant="outlined" sx={{ p: 3, borderRadius: 0 }}>
             <Stack spacing={1}>
               <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
                 <TextField select label="Part of speech" sx={{ flex: 1 }}
@@ -639,7 +633,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       </Stack>
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       {/* General tags */}
 
@@ -665,7 +659,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       {/* Actions */}
 
-      <Divider sx={{ my: 4 }} />
+      <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={2}>
         <Button variant="outlined" onClick={onCancel}>Cancel</Button>
