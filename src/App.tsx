@@ -4,8 +4,11 @@ import UserPopup from "./components/UserPopup";
 import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import WordsPage from "./pages/WordsPage";
 import WordPage from "./pages/WordPage";
+import ArticlePage from "./pages/ArticlePage";
+import ArticlesMenu from "./components/ArticlesMenu";
 import { configurationError, repository, session } from "./config";
 import { printedInkSx } from "./styles/printedInk";
+import UserMetadataProvider from "./components/UserMetadataProvider";
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -55,13 +58,14 @@ export default function App() {
     </Box>
     {configurationError ? <Alert severity="warning">Dictionary connection is not configured. Set {configurationError} in .env.local using .env.example, then restart Vite.</Alert> : <>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {!ready ? <CircularProgress aria-label="Completing sign-in" /> : session.hasSession() ? <Routes>
-        <Route path="/articles" element={<Typography>Articles are coming soon.</Typography>} />
+      {!ready ? <CircularProgress aria-label="Completing sign-in" /> : session.hasSession() ? <UserMetadataProvider repository={repository}><Routes>
+        <Route path="/articles" element={<ArticlesMenu />} />
+        <Route path="/articles/:id" element={<ArticlePage />} />
         <Route path="/words" element={<WordsPage repository={repository} />} />
         <Route path="/words/new" element={<WordPage key="new" repository={repository} creating onSavingChange={setSaving} />} />
         <Route path="/words/:id" element={<WordPage repository={repository} onSavingChange={setSaving} />} />
         <Route path="*" element={<Navigate to="/words" replace />} />
-      </Routes> : <Typography>Sign in to load and save your dictionary.</Typography>}
+      </Routes></UserMetadataProvider> : <Typography>Sign in to load and save your dictionary.</Typography>}
     </>}
   </Box></Container>;
 }

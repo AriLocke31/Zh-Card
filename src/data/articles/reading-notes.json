@@ -1,0 +1,40 @@
+{
+  "id": "reading-notes",
+  "title": "都",
+  "summary": "A placeholder article for vocabulary and reading observations.",
+  "sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "paragraphs": [
+        "A placeholder article for vocabulary and reading observations.",
+        "This is sample content stored in a local JSON file."
+      ]
+    },
+    {
+      "id": "notes",
+      "title": "Notes",
+      "paragraphs": [
+        "Sample note 1: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 2: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 3: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 4: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 5: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 6: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 7: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 8: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 9: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 10: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 11: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height.",
+        "Sample note 12: this paragraph is a stub for future article content. Each section scrolls independently when its text exceeds the available height."
+      ]
+    },
+    {
+      "id": "next-steps",
+      "title": "Next steps",
+      "paragraphs": [
+        "Replace these paragraphs with real reading notes when ready."
+      ]
+    }
+  ]
+}

@@ -30,7 +30,7 @@ Resources:
       CorsConfiguration:
         AllowOrigins: !Ref AllowedOrigins
         AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
-        AllowHeaders: [Authorization, Content-Type, If-Match]
+        AllowHeaders: [Authorization, Content-Type, If-Match, Idempotency-Key]
       Auth:
         DefaultAuthorizer: ZhCardCognito
         Authorizers:
@@ -40,6 +40,20 @@ Resources:
               issuer: !Ref JwtIssuer
               audience: [!Ref ClientId]
             AuthorizationScopes: [openid]
+  UserMetadataTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: userId, AttributeType: S }
+        - { AttributeName: key, AttributeType: S }
+      KeySchema:
+        - { AttributeName: userId, KeyType: HASH }
+        - { AttributeName: key, KeyType: RANGE }
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
   WordsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -52,13 +66,23 @@ Resources:
         Variables:
           TABLE_NAME: !Ref TableName
           OWNER_SUB: !Ref OwnerSub
+          METADATA_TABLE_NAME: !Ref UserMetadataTable
       Policies:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action: [dynamodb:GetItem, dynamodb:Scan, dynamodb:PutItem, dynamodb:DeleteItem]
               Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}'
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:DeleteItem, dynamodb:ConditionCheckItem]
+              Resource: !GetAtt UserMetadataTable.Arn
       Events:
+        LookupWord:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: /words/lookup, Method: GET }
+        GetMetadata:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: /metadata, Method: GET }
         ListWords:
           Type: HttpApi
           Properties: { ApiId: !Ref WordsApi, Path: /words, Method: GET }
@@ -75,6 +99,8 @@ Resources:
           Type: HttpApi
           Properties: { ApiId: !Ref WordsApi, Path: '/words/{id}', Method: DELETE }
 Outputs:
+  MetadataTableName:
+    Value: !Ref UserMetadataTable
   ApiBaseUrl:
     Value: !Sub 'https://${WordsApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
   FunctionName:

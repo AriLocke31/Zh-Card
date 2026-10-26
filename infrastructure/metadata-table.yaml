@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Metadata table only, for the existing Zh-Card Lambda and API
+Parameters:
+  TableName:
+    Type: String
+    Default: UserMetadata
+Resources:
+  UserMetadata:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: userId, AttributeType: S }
+        - { AttributeName: key, AttributeType: S }
+      KeySchema:
+        - { AttributeName: userId, KeyType: HASH }
+        - { AttributeName: key, KeyType: RANGE }
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+Outputs:
+  MetadataTableName:
+    Value: !Ref UserMetadata
+  MetadataTableArn:
+    Value: !GetAtt UserMetadata.Arn

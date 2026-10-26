@@ -1,4 +1,4 @@
-﻿site_name: Zh-Card Dev Documentation
+site_name: Zh-Card Dev Documentation
 site_description: Architecture, implementation, operations and roadmap
 repo_name: zh-card
 theme:
@@ -24,6 +24,7 @@ nav:
     - Overview: architecture/overview.md
     - Data Model: architecture/data-model.md
     - Persistence: architecture/persistence.md
+    - Word Metadata: architecture/metadata.md
   - Codebase:
     - Overview: codebase/overview.md
     - Types: codebase/types.md

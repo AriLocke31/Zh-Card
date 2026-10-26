@@ -16,3 +16,5 @@ Both package locks must remain consistent with their respective manifests. The s
 This pipeline deploys Lambda code only. It does not publish the frontend, provision API routes, or set CORS/IAM/environment values. Frontend VITE_* variables must be available during its hosting build. The SAM template is an optional separate deployment path; it declares JWT-protected routes; reconcile Jenkins LAMBDA_FUNCTION if using its generated function.
 
 The constituent tests/builds passed locally; the updated pipeline has not been run against Jenkins/AWS. Roles Anywhere authentication was previously reported working. See [AWS auth](aws-auth.md), [persistence deployment](../architecture/persistence.md), and [remaining checks](../roadmap/index.md).
+
+Before deploying the metadata-enabled Lambda, follow the [metadata rollout](../architecture/metadata.md). Jenkins does not create the metadata table, add GET /metadata, change IAM/CORS, or run the initialization script.

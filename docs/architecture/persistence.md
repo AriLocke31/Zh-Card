@@ -8,6 +8,8 @@ JWT authentication is enabled. The browser sends a Cognito access token in Autho
 
 | Method/path | Request | Success |
 | --- | --- | --- |
+| GET /metadata | Authenticated owner | 200 current/lifetime word counters and baseline/update timestamps; 503 until initialized |
+| GET /words/lookup | form query parameter | 200 existing WordEntry, 404 if unmatched; requires initialized form index |
 | GET /words | Optional limit (1-100, default 25) and opaque cursor | 200: `{ "items": [...], "nextCursor": "..." }`; nextCursor omitted at end |
 | GET /words/{id} | Path ID | 200 WordEntry; 404 if absent |
 | POST /words | Complete draft WordEntry | 201 persisted WordEntry with server root ID/timestamps |
@@ -16,7 +18,7 @@ JWT authentication is enabled. The browser sends a Cognito access token in Autho
 
 Errors contain `{ "message": "..." }`: 400 malformed input/cursor, 401 missing/invalid access-token claims, 403 wrong owner, 404 missing GET/PUT word or unknown route, 409 conditional write conflict, 500 unexpected failure, 503 missing Lambda configuration. API Gateway rejects invalid/expired JWTs before Lambda runs. Lambda trusts verified API Gateway claims, not a raw Authorization header; do not expose an alternative public invocation path that fabricates authorizer claims. A stale delete, including an already deleted word, returns 409.
 
-POST uses attribute_not_exists(id). PUT reads consistently to preserve createdAt, then conditionally replaces the document only if it still exists and updatedAt matches the request revision. DELETE uses the same revision condition. Two writers using one revision cannot both succeed. No automatic write retries or conflict merging occur. A successful response is required before the UI closes the draft.
+POST uses a transaction to insert the word, increment summary counters, and persist a creation-request ledger using attribute_not_exists guards. PUT reads consistently to preserve createdAt, then conditionally replaces the document only if it still exists and updatedAt matches the request revision. DELETE uses the same revision condition inside a transaction that also decrements the current-word counter. Two writers using one revision cannot both succeed. No automatic write retries or conflict merging occur. A successful response is required before the UI closes the draft.
 
 List uses a bounded, consistent DynamoDB Scan. Its LastEvaluatedKey is encoded as base64url JSON; the cursor validator supports the documented id-only table key. Scans have no stable sort order or snapshot guarantee across pages and are suitable for the current small single-owner dictionary. The client merges pages by ID. For larger dictionaries, design indexed query/search access patterns.
 
@@ -54,7 +56,7 @@ AWS documents [Cognito PKCE and token exchange](https://docs.aws.amazon.com/cogn
 
 The existing Jenkins pipeline updates Lambda code only. Attach the existing ZhCardCognito authorizer to GET /words, POST /words, GET /words/{id}, PUT /words/{id}, and DELETE /words/{id}; use JWT authorization and require the openid scope (or a configured API scope). Deploy the $default stage if auto-deploy is disabled. Deploying Lambda code alone does not modify Gateway settings. The SAM template declares equivalent JWT protection for a new stack.
 
-Configure all five routes and allow both localhost browser origins (5173 and 5174), GET/POST/PUT/DELETE/OPTIONS methods, and Authorization/Content-Type/If-Match headers in API Gateway CORS. CORS does not authenticate callers. Lambda needs TABLE_NAME, OWNER_SUB set to the value above, and an execution role granting GetItem, Scan, PutItem, and DeleteItem on that table. AWS execution/deployment credentials are separate from browser login. No local AWS CLI credentials were available, so these deployed settings were not inspected or modified.
+Configure all five routes and allow both localhost browser origins (5173 and 5174), GET/POST/PUT/DELETE/OPTIONS methods, and Authorization/Content-Type/If-Match/Idempotency-Key headers in API Gateway CORS. CORS does not authenticate callers. Lambda needs TABLE_NAME, OWNER_SUB set to the value above, and an execution role granting GetItem, Scan, PutItem, and DeleteItem on that table. AWS execution/deployment credentials are separate from browser login. No local AWS CLI credentials were available, so these deployed settings were not inspected or modified.
 
 infrastructure/template.yaml is an optional SAM stack for a new JWT-protected HTTP API and Lambda around an existing table. Its parameters are TableName, AllowedOrigins, OwnerSub, JwtIssuer, and ClientId; owner/issuer/client defaults reflect the supplied existing configuration. Build first, then validate/review the deployment:
 
@@ -73,3 +75,7 @@ Use ApiBaseUrl for VITE_API_BASE_URL. If using this new stack with Jenkins, set 
 npm test runs Node/tsx tests with an injected in-memory DynamoDB substitute and mocked OAuth/fetch endpoints. Coverage includes persistence through separate repository instances, revision conflicts, paginated listing, invalid nested records, JWT header transmission, rejection of missing claims/ID tokens/wrong owners on all five routes, invalid API responses, Pinyin round trips, both Hanzi conversion directions, PKCE/state validation, duplicate callback handling, refresh, and sign-out. These are contract/integration tests; they do not establish deployed AWS behavior or browser interaction correctness.
 
 Live acceptance still required: sign in, create a word, reload and fetch it, edit/reload, attempt a stale second-tab update/delete, delete it, and confirm GET returns 404. Verify anonymous and wrong-owner requests are denied, token refresh works, and browser preflight requests succeed without login. See the [roadmap](../roadmap/index.md).
+
+See [Word metadata](metadata.md) for the required METADATA_TABLE_NAME setting, separate table, IAM additions, GET /metadata route, paused-write backfill, and safe deployment sequence. New creates/deletes require initialized metadata.
+
+Written forms are owner-scoped unique identities, maintained as FORM reservations in all word transactions. Create replaces its draft with a matched saved entry and switches Save to PUT. See [lookup/migration details](metadata.md#written-form-identity-and-duplicate-detection).

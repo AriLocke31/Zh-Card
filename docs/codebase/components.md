@@ -65,3 +65,15 @@ The existing theme in src/theme.ts now gives MuiButton and MuiIconButton white b
 WordThumb uses a bold Chinese serif font stack (Noto Serif CJK SC, Noto Serif SC, Source Han Serif SC, Songti SC, SimSun, serif), centered text, and red underlining on hover and keyboard focus. It has no card background, border, or shadow. Fonts are used when installed; no remote font is loaded. Noto Serif CJK SC can be downloaded from https://github.com/notofonts/noto-cjk/tree/main/Serif.
 
 On Create, WordPage hides Back to words and shows a right-aligned Create selector above the editor. CreationType is Word | Article | Sentence, defaulting to Word. Article and Sentence currently display explicit unavailable-editor placeholders. WordEditor stays mounted but hidden for these selections, preserving the Word draft; selection is disabled during saving. Existing detail pages retain Back to words.
+
+## Local articles
+
+ArticleData (src/types.ts) has id, title, summary (strings), and sections: ArticleSection[]. Each section has id/title strings and paragraphs: string[]. JSON stubs live in src/data/articles/; src/data/articles.ts imports them in explicit menu order. Add a JSON file and register its import there to add an article. TypeScript resolveJsonModule checks the imported structure.
+
+ArticlesMenu (src/components/ArticlesMenu.tsx) accepts optional articles: ArticleData[], defaulting to the local registry. /articles shows three summaries per page; ?page=N preserves selection in browser history. Invalid pages fall back to page one; excessive pages clamp to the last. Snippets link to /articles/:id with return navigation state. The existing sign-in gate applies to article routes, although their data is bundled locally and is not private storage.
+
+Article (src/components/Article.tsx) accepts article: ArticleData and renders any number of vertically stacked, square black-bordered sections. Each section has max-height 320px, overflow-y auto, and a keyboard-focusable labeled region. Paragraphs render as plain text. ArticlePage resolves local IDs, shows not-found feedback, and restores the menu page with Back to articles. No Lambda, database, article editing, or publishing implementation is involved.
+
+Words and Articles use matching right-aligned, numbered MUI Pagination controls. Words has no API total count, so numbers cover discovered cursors plus the next available page. Known cursors are retained in navigation state when moving backward. Articles uses the total from its local JSON registry.
+
+UserMetadataProvider wraps authenticated routes and fetches GET /metadata after sign-in. useUserMetadata provides the cached summary and refreshMetadata. WordPage refreshes after successful creation/deletion. Request lifetime checks prevent obsolete session responses from setting state; metadata failures show an independent retry warning. See [metadata setup](../architecture/metadata.md).

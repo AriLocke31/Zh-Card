@@ -27,3 +27,7 @@ Private Database is `{ words: WordEntry[] }`. Private AsyncBrowserStorage<T> wra
 ## Disconnected Node importer (src/index.ts)
 
 Standalone top-level-await script reads slash-separated src/all_words.md lines into the private legacy Word type: numeric id, hanzi, pinyin, meaning. Populates db.json only when words is empty, then logs twenty input records. Its flat schema is incompatible with WordEntry and it is not a migration path into DynamoDB.
+
+ApiWordRepository.getMetadata validates the owner summary. create sends the stable draft ID as Idempotency-Key. Lambda now includes TransactWriteCommand in its injection boundary for create/delete plus metadata changes. src/backend/scripts/backfill-metadata.cjs exports initializeMetadata for tests and provides the dry-run/paused-write CLI via npm run metadata:backfill. [Metadata documentation](../architecture/metadata.md) covers schema, idempotency, IAM, and rollout.
+
+WordRepository.lookupByForm and ApiWordRepository.lookupByForm call GET /words/lookup, map 404 to null, and validate the saved word. ApiError can include a validated existingWord for duplicate-form conflicts. src/backend/src/writtenForms.ts exports formKey, formTexts, and formChanges for normalized owner-scoped reservations and transaction actions; src/utils/writtenForm.ts exports normalizeWrittenForm and the stale-safe async findExistingWord helper. The backfill now writes mappings and the formIndexVersion readiness marker, with an explicit counters-preserving upgrade path.

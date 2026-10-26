@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 import { Box, Paper, Stack, Typography, TextField, Button, IconButton, Chip, Divider, MenuItem, FormControlLabel, Checkbox, Autocomplete, Alert } from "@mui/material";
 import { WordEntry, WrittenForm, Reading, Sense, SenseTag, WordComponent, PartOfSpeech, } from "../types";
 import { parsePinyin } from "../utils/pinyin";
 import { convertHanzi } from "../utils/hanziConversion";
+import { editorShortcut, type EditorSection } from "../utils/editorShortcuts";
+import { findExistingWord, normalizeWrittenForm } from "../utils/writtenForm";
 import SenseTagInput from "./SenseTagInput";
 import PinyinInput from "./PinyinInput";
 import AddIcon from "@mui/icons-material/Add";
@@ -16,6 +18,8 @@ interface WordEditorProps {
   onCancel: () => void;
   saving?: boolean;
   saveError?: string | null;
+  lookupByForm?: ((form: string) => Promise<WordEntry | null>) | undefined;
+  onExistingWord?: ((word: WordEntry) => void) | undefined;
 }
 
 const createEmptyWord = (): WordEntry => {
@@ -47,9 +51,49 @@ const partOfSpeechOptions: PartOfSpeech[] = [
   "other",
 ];
 
-export default function WordEditor({ word, onSave, onCancel, saving = false, saveError }: WordEditorProps) {
+export default function WordEditor({ word, onSave, onCancel, saving = false, saveError, lookupByForm, onExistingWord }: WordEditorProps) {
   const [draft, setDraft] = useState<WordEntry>(() => structuredClone(word ?? createEmptyWord()));
   const [error, setError] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupAttempt, setLookupAttempt] = useState(0);
+  const formsSignature = JSON.stringify([...new Set(draft.forms.map(form => normalizeWrittenForm(form.text)).filter(Boolean))]);
+  const latestForms = useRef(formsSignature);
+  latestForms.current = formsSignature;
+  const compositionActive = useRef(false);
+  useEffect(() => {
+    if (!lookupByForm || !onExistingWord || composing) { setChecking(false); return; }
+    const forms: string[] = JSON.parse(formsSignature);
+    if (!forms.length) { setChecking(false); setLookupError(null); return; }
+    let active = true;
+    setChecking(true); setLookupError(null);
+    const timer = window.setTimeout(async () => {
+      try {
+        const existing = await findExistingWord(forms, lookupByForm,
+          () => active && !compositionActive.current && latestForms.current === formsSignature);
+        if (existing) onExistingWord(existing);
+      } catch (error) {
+        if (active && latestForms.current === formsSignature) setLookupError(error instanceof Error ? error.message : "Could not check for an existing word.");
+      } finally { if (active) setChecking(false); }
+    }, 350);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [formsSignature, composing, lookupByForm, onExistingWord, lookupAttempt]);
+  const editorRef = useRef<HTMLFieldSetElement>(null);
+  const activeSection = useRef<EditorSection | null>(null);
+  const [focusTarget, setFocusTarget] = useState<{ section: EditorSection; id?: string } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!focusTarget) return;
+    const section = editorRef.current?.querySelector<HTMLElement>(`[data-editor-section="${focusTarget.section}"]`);
+    const row = focusTarget.id ? section?.querySelector<HTMLElement>(`[data-editor-row="${focusTarget.id}"]`) : section;
+    const input = row?.querySelector<HTMLElement>(focusTarget.section === "senses"
+      ? "textarea" : 'input:not([type="hidden"]):not([type="checkbox"]), textarea');
+    input?.focus({ preventScroll: true });
+    activeSection.current = focusTarget.section;
+    row?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    setFocusTarget(null);
+  }, [focusTarget]);
 
   const addForm = () => {
     const newForm: WrittenForm = {
@@ -60,6 +104,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
     };
 
     setDraft(prev => ({ ...prev, forms: [...prev.forms, newForm], }));
+    return newForm.id;
   };
 
   const updateForm = (id: string, changes: Partial<WrittenForm>) => {
@@ -107,6 +152,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
     };
 
     setDraft((prev) => ({ ...prev, readings: [...prev.readings, reading], }));
+    return reading.id;
   }
 
   const updateReading = (id: string, changes: Partial<Reading>) => {
@@ -136,6 +182,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
     };
 
     setDraft((prev) => ({ ...prev, senses: [...prev.senses, sense], }));
+    return sense.id;
   };
 
   const updateSense = (id: string, changes: Partial<Sense>) => {
@@ -230,7 +277,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
   };
 
   const handleSave = () => {
-    if (saving) return;
+    if (saving || checking || composing || lookupError) return;
     const forms = draft.forms.map((form) => ({
       ...form, text: form.text.trim(),
     }));
@@ -325,8 +372,29 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
     });
   }
 
+  const handleShortcut = (event: KeyboardEvent<HTMLFieldSetElement>) => {
+    if (saving) return;
+    const shortcut = editorShortcut({ key: event.key, ctrlKey: event.ctrlKey, shiftKey: event.shiftKey,
+      altKey: event.altKey, metaKey: event.metaKey, isComposing: event.nativeEvent.isComposing, repeat: event.repeat }, activeSection.current);
+    if (!shortcut) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (shortcut.action === "save") { handleSave(); return; }
+    const section = shortcut.section;
+    const id = section === "forms" ? addForm() : section === "readings" ? addReading() : section === "senses" ? addSense() : undefined;
+    setFocusTarget({ section, ...(id ? { id } : {}) });
+  };
+
   return (
-    <Box component="fieldset" disabled={saving} sx={{
+    <Box component="fieldset" ref={editorRef} disabled={saving} onKeyDownCapture={handleShortcut}
+      onCompositionStartCapture={() => { compositionActive.current = true; setComposing(true); }}
+      onCompositionEndCapture={() => { compositionActive.current = false; setComposing(false); }}
+      onFocusCapture={event => {
+        activeSection.current = (event.target as HTMLElement).closest<HTMLElement>("[data-editor-section]")?.dataset.editorSection as EditorSection ?? null;
+      }}
+      onPointerDownCapture={event => {
+        activeSection.current = (event.target as HTMLElement).closest<HTMLElement>("[data-editor-section]")?.dataset.editorSection as EditorSection ?? null;
+      }} sx={{
       border: 0, p: 0, m: 0, minWidth: 0, maxWidth: 600, mx: "auto",
       "& .MuiPaper-root": { backgroundColor: "transparent", backgroundImage: "none", borderRadius: 0, borderColor: "#000", boxShadow: "none" },
       "& .MuiInputBase-root": { backgroundColor: "transparent", borderRadius: 0 },
@@ -347,8 +415,11 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
           {error || saveError}
         </Alert>
       )}
+      {checking && <Typography variant="body2" role="status" sx={{ mb: 2 }}>Checking written forms…</Typography>}
+      {lookupError && <Alert severity="error" sx={{ mb: 2 }} action={<Button onClick={() => setLookupAttempt(value => value + 1)}>Retry</Button>}>{lookupError}</Alert>}
 
       {/* Written forms */}
+      <Box component="section" data-editor-section="forms" aria-label="Written forms">
 
       <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h5" gutterBottom>Written forms</Typography>
@@ -366,7 +437,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
           const showSuggestion = targetScript !== null && suggestion.length > 0 && suggestion !== form.text && !targetAlreadyExists;
 
           return (
-            <Paper key={form.id} variant="outlined" sx={{ p: 2, borderRadius: 0 }}>
+            <Paper key={form.id} data-editor-row={form.id} variant="outlined" sx={{ p: 2, borderRadius: 0 }}>
               <Stack spacing={1}>
                 <Stack direction="row" spacing={2} useFlexGap>
                   <TextField sx={{ flex: 1 }}
@@ -424,9 +495,11 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       </Stack>
 
+      </Box>
       <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       {/* Pronunciations */}
+      <Box component="section" data-editor-section="readings" aria-label="Pronunciations">
 
       <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h5" gutterBottom>Pronunciations</Typography>
@@ -435,7 +508,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       <Stack spacing={1} sx={{ mt: 2 }}>
         {draft.readings.map((reading) => (
-          <Paper key={reading.id} variant="outlined" sx={{ p: 2, borderRadius: 0 }}>
+          <Paper key={reading.id} data-editor-row={reading.id} variant="outlined" sx={{ p: 2, borderRadius: 0 }}>
             <Stack spacing={2}>
               <Stack direction="row" spacing={2}>
                 <TextField select label="Language variety" value={reading.variety}
@@ -510,9 +583,11 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       </Stack>
 
+      </Box>
       <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       {/* Definitions */}
+      <Box component="section" data-editor-section="senses" aria-label="Definitions">
 
       <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
         <Typography variant="h5" gutterBottom>Definitions</Typography>
@@ -521,7 +596,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       <Stack spacing={2} sx={{ mt: 2 }}>
         {draft.senses.map((sense, index) => (
-          <Paper key={sense.id} variant="outlined" sx={{ p: 3, borderRadius: 0 }}>
+          <Paper key={sense.id} data-editor-row={sense.id} variant="outlined" sx={{ p: 3, borderRadius: 0 }}>
             <Stack spacing={1}>
               <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
                 <TextField select label="Part of speech" sx={{ flex: 1 }}
@@ -633,9 +708,11 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       </Stack>
 
+      </Box>
       <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       {/* General tags */}
+      <Box component="section" data-editor-section="tags" aria-label="Word tags">
 
       <Typography variant="h5" gutterBottom>Word tags</Typography>
 
@@ -659,12 +736,13 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
 
       {/* Actions */}
 
+      </Box>
       <Divider sx={{ my: 4, mx: { xs: -2, sm: -4 }, borderColor: "#000", opacity: 1 }} />
 
       <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={2}>
         <Button variant="outlined" onClick={onCancel}>Cancel</Button>
 
-        <Button variant="contained" disabled={saving} onClick={handleSave}>{saving ? "Saving…" : "Save word"}</Button>
+        <Button variant="contained" disabled={saving || checking || composing || Boolean(lookupError)} onClick={handleSave}>{saving ? "Saving…" : "Save word"}</Button>
       </Stack>
     </Paper>
     </Box>

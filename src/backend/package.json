@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "metadata:backfill": "node scripts/backfill-metadata.cjs",
     "typecheck": "tsc --noEmit",
     "build": "esbuild src/handler.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"

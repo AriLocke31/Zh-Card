@@ -1,0 +1,15 @@
+{
+  "id": "language-journal",
+  "title": "Language journal",
+  "summary": "A sample journal entry to demonstrate article pagination.",
+  "sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "paragraphs": [
+        "A sample journal entry to demonstrate article pagination.",
+        "This is sample content stored in a local JSON file."
+      ]
+    }
+  ]
+}

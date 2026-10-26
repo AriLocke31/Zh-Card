@@ -51,3 +51,29 @@ Roles Anywhere/Jenkins AWS authentication was previously reported working; it wa
 
 - [x] Create-page Word/Article/Sentence selector, with WordEditor as default and draft preservation across selections.
 - [ ] Implement ArticleEditor and SentenceEditor and their persistence; current selections show placeholders.
+
+- [x] Local JSON article stubs, paginated ArticlesMenu at /articles, and Article detail routes with independently scrolling boxed sections.
+- [ ] Article authoring and persistence remain unimplemented; the Create Article option still shows its editor placeholder.
+
+
+## Metadata (2026-10-26)
+
+- [x] Separate per-owner summary table design; authenticated GET /metadata with current/lifetime creation counts and baseline timestamps.
+- [x] Transactional creation/deletion counters and persistent idempotent creation retries; updates leave counts unchanged.
+- [x] Startup metadata provider, refresh after successful mutations, and independent metadata failure/retry state.
+- [x] Paused-write initialization script with dry-run default and protection against overwriting a summary.
+- [x] Complete-stack and metadata-table-only templates, IAM/CORS/route setup, deployment sequence, and regression tests.
+- [ ] Create/configure the metadata table, route, IAM, and Lambda environment in AWS; run the backfill with all writers paused and deploy.
+- [ ] Live verification of counts, retries, concurrent writes, and deployment rollout.
+- [ ] Daily creation statistics with a defined timezone; indexes for actual words created by day.
+- [ ] Due-card records/indexes and review counts; user settings/profile records.
+- [ ] Idempotency-ledger retention, administrative reconciliation, and scaled counter contention strategy.
+
+
+## Written-form identity (2026-10-26)
+
+- [x] One normalized written form per word entry per owner, maintained through transactional create/update/delete reservations.
+- [x] Authenticated exact lookup route; Create automatically replaces matching drafts with existing data and saves as an update.
+- [x] Debounced IME-aware checks, stale-result rejection, pre-save checks, and concurrent-conflict recovery.
+- [x] Backfill collision detection, restartable mapping writes, and explicit counters-preserving form-index upgrade.
+- [ ] Configure GET /words/lookup and metadata DeleteItem/ConditionCheckItem permissions, backfill the form index with writers paused, deploy, and verify real-browser composition and matched-entry editing.

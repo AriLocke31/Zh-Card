@@ -43,3 +43,14 @@ Pinyin normalization stores numbered, whitespace-separated canonical syllables a
 ## Presentation
 
 Word Editor and Draft appear in a space-between row above the main form border. The form and nested panels are transparent, square-cornered, and bordered in black. Section dividers extend edge-to-edge across the main panel. Input containers and buttons are transparent and square; button shadows are removed. These styles are scoped to WordEditor rather than changing other application forms.
+
+## Keyboard shortcuts
+
+Shortcuts are scoped to WordEditor's fieldset, using capture handlers so nested autocomplete controls cannot consume them first. Ctrl+Enter invokes the existing validation/save path. Tab in Written forms adds a pronunciation; Tab in Pronunciations adds a definition; Tab in Definitions focuses Word tags. Newly added records receive focus (Hanzi/Pinyin/definition as appropriate) and scroll to the viewport center. Word tags has no blank-record Add operation, so Tab there follows normal navigation. Shift+Tab always retains normal backward navigation.
+
+Shift+A (the uppercase A chord) adds another record within Written forms, Pronunciations, or Definitions and focuses/centers it. This chord is reserved even inside text inputs. IME composition, repeated keydown events, unsupported modifier combinations, and saving state suppress shortcuts. Reduced-motion preferences disable smooth scrolling. Pointer/focus events establish the active section. src/utils/editorShortcuts.ts defines EditorSection and the pure shortcut resolver; WordEditor applies the actions after React commits each added record.
+
+
+## Existing written-form matches
+
+Optional lookupByForm: (text: string) => Promise<WordEntry or null> and onExistingWord: (word: WordEntry) => void support creation-mode duplicate checks. After 350ms without form changes, the editor checks normalized nonempty forms, suppressing checks during IME composition and ignoring obsolete results. It disables Save during checks or lookup failures and provides Retry. WordPage replaces its word state on a match and remounts WordEditor by the saved ID so every field is loaded from the existing entry. A create-route editor with a matched word saves using update(), preserving the saved revision and avoiding new counters/IDs. Transactional duplicate responses use the same replacement path. No confirmation or draft merge occurs.

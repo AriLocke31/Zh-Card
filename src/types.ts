@@ -1,5 +1,18 @@
 export type UUID = string;
 
+export interface ArticleSection {
+  id: string;
+  title: string;
+  paragraphs: string[];
+}
+
+export interface ArticleData {
+  id: string;
+  title: string;
+  summary: string;
+  sections: ArticleSection[];
+}
+
 export interface Flashcard {
   id: UUID;
   wordId: string;

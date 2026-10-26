@@ -53,3 +53,11 @@ The Pinyin utility also uses an inline `{ vowel: string; tone: number }` map val
 See [storage](storage.md) and [persistence](../architecture/persistence.md) for lifecycle and request contracts.
 
 UserPopupProps (src/components/UserPopup.tsx): loggedIn: boolean, disabled?: boolean, onSignIn: () => void, onSignOut: () => void. See the component reference for menu behavior.
+
+## Article types
+
+ArticleData: id: string, title: string, summary: string, sections: ArticleSection[]. ArticleSection: id: string, title: string, paragraphs: string[]. Both are exported from src/types.ts for the local JSON registry and article components. ArticleProps requires article: ArticleData; ArticlesMenuProps accepts optional articles: ArticleData[].
+
+UserMetadata (src/validation/metadata.ts) contains wordCount: number, wordsCreatedTotal: number, initializedAt: string, updatedAt: string. isUserMetadata validates nonnegative safe integer counts, creation totals at least current totals, and parseable timestamps. UserMetadataProvider exposes MetadataState (metadata: UserMetadata or null, refreshMetadata: () => Promise<void>).
+
+WordRepository additionally requires lookupByForm(form: string): Promise<WordEntry or null>. ApiError optionally carries existingWord: WordEntry. WordEditorProps adds optional lookupByForm and onExistingWord callbacks for replacing new drafts with stored entries. Internal metadata SUMMARY records now require formIndexVersion=1 before lookup or mutations; FORM records contain userId, key, text, wordId (strings).

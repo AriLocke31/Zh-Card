@@ -1,0 +1,15 @@
+{
+  "id": "daily-practice",
+  "title": "Daily practice",
+  "summary": "A placeholder for notes about a daily reading routine.",
+  "sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "paragraphs": [
+        "A placeholder for notes about a daily reading routine.",
+        "This is sample content stored in a local JSON file."
+      ]
+    }
+  ]
+}

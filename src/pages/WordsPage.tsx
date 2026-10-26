@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Pagination, Typography } from "@mui/material";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import WordThumb from "../components/WordThumb";
 import type { WordPage, WordRepository } from "../repositories/WordRepository";
@@ -29,9 +29,19 @@ export default function WordsPage({ repository }: WordsPageProps) {
 
   const page = result && result.cursor === cursor ? result.page : null;
   const pending = loading || (!page && !error);
+  // GET /words has no total count: offer discovered pages and the next cursor.
+  const known: string[] = Array.isArray(location.state?.cursors) && location.state.cursors.every((value: unknown) => typeof value === "string")
+    ? location.state.cursors : [];
+  const currentPage = previous.length + 1;
+  let cursors = known[previous.length] === (cursor ?? "") ? [...known] : [...previous, cursor ?? ""];
+  if (page) {
+    if (page.nextCursor) {
+      if (cursors[currentPage] !== page.nextCursor) cursors = [...cursors.slice(0, currentPage), page.nextCursor];
+    } else cursors = cursors.slice(0, currentPage);
+  }
   const go = (cursor: string | undefined, history: string[]) => navigate({
     pathname: "/words", search: cursor ? `?${new URLSearchParams({ cursor })}` : "",
-  }, { state: { previous: history } });
+  }, { state: { previous: history, cursors } });
 
   return <>
     {error && <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" onClick={() => setRetry(value => value + 1)}>Retry</Button>}>{error}</Alert>}
@@ -41,10 +51,8 @@ export default function WordsPage({ repository }: WordsPageProps) {
           returnTo={`${location.pathname}${location.search}`} returnState={location.state} />)}
       </Box> : <Typography>{cursor ? "No words on this page." : "No words yet. Add a new word to get started."}</Typography>}
     </>}
-    <Stack component="nav" aria-label="Words pagination" direction="row" spacing={2} sx={{ mt: 3, alignItems: "center" }}>
-      <Button disabled={pending || !cursor} onClick={() => go(previous.at(-1) || undefined, previous.slice(0, -1))}>Previous</Button>
-      <Button disabled={pending || Boolean(error) || !page?.nextCursor}
-        onClick={() => { if (page?.nextCursor) go(page.nextCursor, [...previous, cursor ?? ""]); }}>Next</Button>
-    </Stack>
+    {cursors.length > 1 && <Pagination aria-label="Words pagination" count={cursors.length} page={currentPage}
+      shape="rounded" disabled={pending || Boolean(error)} sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}
+      onChange={(_, target) => go(cursors[target - 1] || undefined, cursors.slice(0, target - 1))} />}
   </>;
 }

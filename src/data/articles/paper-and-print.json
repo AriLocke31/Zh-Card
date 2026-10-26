@@ -1,0 +1,15 @@
+{
+  "id": "paper-and-print",
+  "title": "Paper and print",
+  "summary": "A short stub about paper, ink, and printed Chinese text.",
+  "sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "paragraphs": [
+        "A short stub about paper, ink, and printed Chinese text.",
+        "This is sample content stored in a local JSON file."
+      ]
+    }
+  ]
+}

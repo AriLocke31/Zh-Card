@@ -1,8 +1,11 @@
-﻿import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import WordDetail from "../components/WordDetail";
 import WordEditor from "../components/WordEditor";
+import { ApiError } from "../repositories/ApiWordRepository";
+import { findExistingWord } from "../utils/writtenForm";
+import { useUserMetadata } from "../components/UserMetadataProvider";
 import type { WordEntry } from "../types";
 import type { WordRepository } from "../repositories/WordRepository";
 
@@ -13,6 +16,7 @@ export default function WordPage({ repository, creating = false, onSavingChange 
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { refreshMetadata } = useUserMetadata();
   const [word, setWord] = useState<WordEntry | null>(null);
   const [loading, setLoading] = useState(!creating);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +30,11 @@ export default function WordPage({ repository, creating = false, onSavingChange 
   const returnTo = typeof location.state?.returnTo === "string" && /^\/words(?:\?|$)/.test(location.state.returnTo)
     ? location.state.returnTo : "/words";
   const returnState: unknown = location.state?.returnState;
+  const lookupByForm = useCallback((form: string) => repository.lookupByForm(form), [repository]);
+  const loadExisting = useCallback((existing: WordEntry) => {
+    setWord(existing); setEditing(true); setError(null); setSaveError(null);
+    setNotice("This written form already exists. Its saved data has replaced the draft; you are now updating that word.");
+  }, []);
 
   useEffect(() => {
     if (creating || !id) return;
@@ -44,16 +53,25 @@ export default function WordPage({ repository, creating = false, onSavingChange 
     if (saving) return;
     setSaving(true); onSavingChange(true); setSaveError(null);
     try {
-      const saved = creating ? await repository.create(draft) : await repository.update(draft);
+      const isNew = creating && !word;
+      if (isNew) {
+        const existing = await findExistingWord(draft.forms.map(form => form.text), lookupByForm);
+        if (existing) { loadExisting(existing); return; }
+      }
+      const saved = isNew ? await repository.create(draft) : await repository.update(draft);
       setWord(saved); setEditing(false); setNotice("Word saved.");
+      if (isNew) void refreshMetadata();
       if (creating) navigate(`/words/${encodeURIComponent(saved.id)}`, { replace: true, state: { returnTo, returnState } });
-    } catch (error) { setSaveError(error instanceof Error ? error.message : "Could not save word."); }
+    } catch (error) {
+      if (error instanceof ApiError && error.existingWord) loadExisting(error.existingWord);
+      else setSaveError(error instanceof Error ? error.message : "Could not save word.");
+    }
     finally { setSaving(false); onSavingChange(false); }
   };
   const remove = async () => {
     if (!word || saving) return;
     setSaving(true); onSavingChange(true); setError(null);
-    try { await repository.delete(word.id, word.updatedAt); navigate(returnTo, { state: returnState }); }
+    try { await repository.delete(word.id, word.updatedAt); void refreshMetadata(); navigate(returnTo, { state: returnState }); }
     catch (error) { setError(error instanceof Error ? error.message : "Could not delete word."); setDeleting(false); }
     finally { setSaving(false); onSavingChange(false); }
   };
@@ -85,7 +103,8 @@ export default function WordPage({ repository, creating = false, onSavingChange 
     {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
     {creating && creationType !== "Word" && <Typography>{creationType} editor is not available yet.</Typography>}
     <Box hidden={creating && creationType !== "Word"}>
-    {loading ? <CircularProgress aria-label="Loading word" /> : editing ? <WordEditor word={word ?? undefined}
+    {loading ? <CircularProgress aria-label="Loading word" /> : editing ? <WordEditor key={word?.id ?? "new"} word={word ?? undefined}
+      lookupByForm={creating && !word && creationType === "Word" ? lookupByForm : undefined} onExistingWord={loadExisting}
       saving={saving} saveError={saveError} onSave={save} onCancel={() => {
         if (creating) navigate(returnTo, { state: returnState });
         else { setEditing(false); setSaveError(null); }

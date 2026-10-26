@@ -1,9 +1,10 @@
 import type { WordEntry } from "../types";
 import { isRecord, isStoredWordEntry } from "../validation/word";
 import type { WordRepository, WordPage } from "./WordRepository";
+import { isUserMetadata, type UserMetadata } from "../validation/metadata";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  constructor(public status: number, message: string, public existingWord?: WordEntry) { super(message); }
 }
 
 export class ApiWordRepository implements WordRepository {
@@ -23,7 +24,8 @@ export class ApiWordRepository implements WordRepository {
     let data: unknown;
     try { data = await response.json(); } catch { data = undefined; }
     if (!response.ok) throw new ApiError(response.status, isRecord(data) && typeof data.message === "string"
-      ? data.message : `Request failed (${response.status})`);
+      ? data.message : `Request failed (${response.status})`,
+      isRecord(data) && isStoredWordEntry(data.existingWord) ? data.existingWord : undefined);
     return data;
   }
 
@@ -37,6 +39,11 @@ export class ApiWordRepository implements WordRepository {
     catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
   }
 
+  async lookupByForm(form: string): Promise<WordEntry | null> {
+    try { return this.word(await this.request(`/words/lookup?${new URLSearchParams({ form })}`)); }
+    catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+  }
+
   async list(cursor?: string): Promise<WordPage> {
     const result = await this.request(`/words?limit=25${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
     if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isStoredWordEntry) ||
@@ -44,7 +51,13 @@ export class ApiWordRepository implements WordRepository {
     return { items: result.items, ...(typeof result.nextCursor === "string" ? { nextCursor: result.nextCursor } : {}) };
   }
 
-  async create(word: WordEntry) { return this.word(await this.request("/words", { method: "POST", body: JSON.stringify(word) })); }
+  async getMetadata(): Promise<UserMetadata> {
+    const result = await this.request("/metadata");
+    if (!isUserMetadata(result)) throw new Error("The server returned invalid word metadata.");
+    return result;
+  }
+
+  async create(word: WordEntry) { return this.word(await this.request("/words", { method: "POST", headers: { "Idempotency-Key": word.id }, body: JSON.stringify(word) })); }
   async update(word: WordEntry) { return this.word(await this.request(`/words/${encodeURIComponent(word.id)}`, { method: "PUT", body: JSON.stringify(word) })); }
   async delete(id: string, updatedAt: string) {
     await this.request(`/words/${encodeURIComponent(id)}`, { method: "DELETE", headers: { "If-Match": updatedAt } });
