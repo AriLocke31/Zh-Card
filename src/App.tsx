@@ -9,11 +9,13 @@ import ArticlesMenu from "./components/ArticlesMenu";
 import { configurationError, repository, session } from "./config";
 import { printedInkSx } from "./styles/printedInk";
 import UserMetadataProvider from "./components/UserMetadataProvider";
+import type { StudySession } from "./utils/studyQueue";
 
 export default function App() {
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [studySession, setStudySession] = useState<StudySession>({ initialized: false, order: [], reviewedIds: [] });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,11 +50,11 @@ export default function App() {
           "&.Mui-disabled": { backgroundColor: "transparent", color: "rgba(36, 27, 18, 0.38)" },
         },
       }}>
-        <Button component={NavLink} to="/words" end disabled={saving}>Words</Button>
+        <Button component={NavLink} to="/words" end disabled={saving}>Study</Button>
         <Button component={NavLink} to="/words/new" disabled={saving || !ready || !session.hasSession()}>Create</Button>
         <Button component={NavLink} to="/articles" disabled={saving}>Articles</Button>
         <UserPopup label="Account" loggedIn={session.hasSession()} disabled={Boolean(configurationError) || !ready || saving}
-          onSignOut={() => { session.signOut(); setError(null); navigate("/words"); }}
+          onSignOut={() => { session.signOut(); setError(null); setStudySession({ initialized: false, order: [], reviewedIds: [] }); navigate("/words"); }}
           onSignIn={() => { void session.signIn().catch(error => setError(error instanceof Error ? error.message : "Could not sign in.")); }} />
       </Box>
     </Box>
@@ -61,7 +63,7 @@ export default function App() {
       {!ready ? <CircularProgress aria-label="Completing sign-in" /> : session.hasSession() ? <UserMetadataProvider repository={repository}><Routes>
         <Route path="/articles" element={<ArticlesMenu />} />
         <Route path="/articles/:id" element={<ArticlePage />} />
-        <Route path="/words" element={<WordsPage repository={repository} />} />
+        <Route path="/words" element={<WordsPage repository={repository} studySession={studySession} onStudySessionChange={setStudySession} />} />
         <Route path="/words/new" element={<WordPage key="new" repository={repository} creating onSavingChange={setSaving} />} />
         <Route path="/words/:id" element={<WordPage repository={repository} onSavingChange={setSaving} />} />
         <Route path="*" element={<Navigate to="/words" replace />} />

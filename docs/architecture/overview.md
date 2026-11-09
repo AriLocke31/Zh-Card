@@ -12,9 +12,9 @@ flowchart LR
     Jenkins -->|bundle and deploy| Lambda
 ```
 
-The browser loads a paginated dictionary, fetches selected entries, and creates/updates/deletes words through the API. There is no mock-data fallback. Written forms, readings, senses, components, tags, and timestamps travel as one WordEntry aggregate. Editor drafts stay local until a successful response replaces them with server data.
+The Study tab loads the paginated dictionary into an in-memory review queue. Answering cards reorders the queue locally; Sync persists the ordered word IDs as an owner-scoped metadata item. The browser also fetches selected entries and creates/updates/deletes words through the API. There is no mock-data fallback. Written forms, readings, senses, components, tags, and timestamps travel as one WordEntry aggregate. Editor drafts stay local until a successful response replaces them with server data.
 
-The table is a shared dictionary with a string partition key named id and no sort key. API Gateway validates Cognito JWTs; Lambda requires access-token claims and the configured OWNER_SUB. The browser signs in through Cognito with authorization-code/PKCE. Attach the existing authorizer to all five Gateway routes; source changes do not update deployed Gateway configuration.
+The table is a shared dictionary with a string partition key named id and no sort key. API Gateway validates Cognito JWTs; Lambda requires access-token claims and the configured OWNER_SUB. The browser signs in through Cognito with authorization-code/PKCE. Attach the existing authorizer to all Gateway routes, including the Study-order endpoints; source changes do not update deployed Gateway configuration.
 
 [Persistence](persistence.md) describes HTTP contracts, conditional writes, auth, and setup. [Data model](data-model.md) describes invariants. [Roadmap](../roadmap/index.md) distinguishes implemented source from outstanding rollout and product work.
 

@@ -74,6 +74,19 @@ function database() {
       const page = values.slice(offset, offset + input.Limit);
       return { Items: structuredClone(page), ...(offset + page.length < values.length ? { LastEvaluatedKey: { id: page.at(-1).id } } : {}) };
     }
+    if (command instanceof PutCommand && input.TableName === "metadata") {
+      const key = `${input.Item.userId}:${input.Item.key}`;
+      const existing = metadata.get(key);
+      if (input.ConditionExpression === "attribute_not_exists(userId)" && existing) {
+        const error = new Error("Conditional failure"); error.name = "ConditionalCheckFailedException"; throw error;
+      }
+      if (input.ConditionExpression === "updatedAt = :expected" &&
+          existing?.updatedAt !== input.ExpressionAttributeValues[":expected"]) {
+        const error = new Error("Conditional failure"); error.name = "ConditionalCheckFailedException"; throw error;
+      }
+      metadata.set(key, structuredClone(input.Item));
+      return {};
+    }
     const id = command instanceof PutCommand ? input.Item.id : input.Key.id;
     const existing = items.get(id);
     const expected = input.ExpressionAttributeValues?.[":expected"];
@@ -122,6 +135,24 @@ test("default transport calls browser fetch with the global receiver", async () 
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test("study order repository reads and syncs through study endpoints", async () => {
+  const requests: { url: string; method: string; body?: string }[] = [];
+  const repository = new ApiWordRepository("https://example.test", async () => "access-token", async (input, init) => {
+    requests.push({ url: String(input), method: init?.method ?? "GET", ...(typeof init?.body === "string" ? { body: init.body } : {}) });
+    return Response.json(requests.at(-1)?.method === "POST"
+      ? { updatedAt: "2026-11-09T12:00:00.000Z" }
+      : { order: ["newest"], updatedAt: "2026-11-09T11:00:00.000Z" });
+  });
+  assert.deepEqual(await repository.getStudyOrder(), { order: ["newest"], updatedAt: "2026-11-09T11:00:00.000Z" });
+  assert.equal(await repository.syncStudyOrder(["newest", "older"], "2026-11-09T11:00:00.000Z"), "2026-11-09T12:00:00.000Z");
+  assert.deepEqual(requests.map(request => [new URL(request.url).pathname, request.method]), [
+    ["/study/order", "GET"], ["/study/sync", "POST"],
+  ]);
+  assert.deepEqual(JSON.parse(requests[1]!.body!), {
+    order: ["newest", "older"], expectedUpdatedAt: "2026-11-09T11:00:00.000Z",
+  });
 });
 
 test("repository and handler persist create/read/update/delete across repository instances", async () => {
@@ -181,6 +212,21 @@ test("pagination has no missing entries; invalid requests never write", async ()
   assert.equal((await handler(event("DELETE /words/{id}", { pathParameters: { id: "missing" } }))).statusCode, 400);
 });
 
+test("study order API reads, syncs, validates and rejects stale syncs", async () => {
+  const db = database();
+  const handler = createHandler(db.send, { tableName: "words", ownerSub: "owner", metadataTableName: "metadata" });
+  const get = async () => JSON.parse((await handler(event("GET /study/order"))).body!);
+  assert.deepEqual(await get(), { order: [] });
+  const first = await handler(event("POST /study/sync", { body: JSON.stringify({ order: ["newest", "older"] }) }));
+  assert.equal(first.statusCode, 200);
+  const updatedAt = JSON.parse(first.body!).updatedAt;
+  assert.deepEqual(await get(), { order: ["newest", "older"], updatedAt });
+  assert.equal((await handler(event("POST /study/sync", { body: JSON.stringify({
+    order: ["older", "newest"], expectedUpdatedAt: "2026-10-26T00:00:00.000Z",
+  }) }))).statusCode, 409);
+  assert.equal((await handler(event("POST /study/sync", { body: JSON.stringify({ order: ["same", "same"] }) }))).statusCode, 400);
+});
+
 test("nested schema rejects malformed records and inconsistent links", () => {
   assert.equal(isWordEntry(fixture()), true);
   for (const mutate of [
@@ -217,7 +263,8 @@ test("repository rejects malformed success responses and preserves API errors", 
 test("all routes reject missing JWT claims, ID tokens, and other owners before accessing DynamoDB", async () => {
   const db = database();
   const handler = createHandler(db.send, { tableName: "words", ownerSub: "owner", metadataTableName: "metadata" });
-  for (const route of ["GET /words/lookup", "GET /metadata", "GET /words", "GET /words/{id}", "POST /words", "PUT /words/{id}", "DELETE /words/{id}"]) {
+  for (const route of ["GET /words/lookup", "GET /metadata", "GET /study/order", "POST /study/sync",
+    "GET /words", "GET /words/{id}", "POST /words", "PUT /words/{id}", "DELETE /words/{id}"]) {
     assert.equal((await handler(event(route, { requestContext: {} }))).statusCode, 401);
     assert.equal((await handler(event(route, { requestContext: { authorizer: { jwt: { claims: { sub: "owner", token_use: "id" } } } } }))).statusCode, 401);
     assert.equal((await handler(event(route, { requestContext: { authorizer: { jwt: { claims: { sub: "another-user", token_use: "access" } } } } }))).statusCode, 403);

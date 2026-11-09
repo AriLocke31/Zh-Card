@@ -35,4 +35,4 @@ Local automated tests use fake DynamoDB/OAuth transports. After configuring and 
 
 ## Frontend routes
 
-Words (/words) is the first navigation item. /words/:id opens details; /words/new creates an entry. Production frontend hosting must rewrite these paths to index.html, without rewriting static assets or API calls. Vite provides SPA fallback locally. The Cognito callback can remain the origin root; authentication completes before redirecting to /words.
+Study (/words) is the first navigation item. /words/:id opens details; /words/new creates an entry. Production frontend hosting must rewrite these paths to index.html, without rewriting static assets or API calls. Vite provides SPA fallback locally. The Cognito callback can remain the origin root; authentication completes before redirecting to /words.

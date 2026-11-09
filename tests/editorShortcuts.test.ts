@@ -15,19 +15,21 @@ test("Tab adds in the next section and leaves tags and Shift+Tab to native navig
   assert.equal(editorShortcut(key("Tab"), null), null);
   assert.equal(editorShortcut(key("Tab", { shiftKey: true }), "readings"), null);
 });
-test("Shift+A adds within each repeatable section without intercepting plain a", () => {
+test("Ctrl+A adds within each repeatable section without intercepting plain or Shift+A", () => {
   for (const section of ["forms", "readings", "senses"] as EditorSection[]) {
-    assert.deepEqual(editorShortcut(key("A", { shiftKey: true }), section), { action: "add", section });
-    assert.deepEqual(editorShortcut(key("a", { shiftKey: true }), section), { action: "add", section });
+    assert.deepEqual(editorShortcut(key("A", { ctrlKey: true }), section), { action: "add", section });
+    assert.deepEqual(editorShortcut(key("a", { ctrlKey: true }), section), { action: "add", section });
     assert.equal(editorShortcut(key("a"), section), null);
+    assert.equal(editorShortcut(key("A", { shiftKey: true }), section), null);
+    assert.equal(editorShortcut(key("A", { ctrlKey: true, shiftKey: true }), section), null);
   }
-  assert.equal(editorShortcut(key("A", { shiftKey: true }), "tags"), null);
+  assert.equal(editorShortcut(key("A", { ctrlKey: true }), "tags"), null);
 });
 test("composition, held keys, and other modifier combinations never trigger edits", () => {
   for (const modifiers of [{ isComposing: true }, { repeat: true }, { altKey: true }, { metaKey: true }]) {
     assert.equal(editorShortcut(key("Tab", modifiers), "forms"), null);
     assert.equal(editorShortcut(key("Enter", { ctrlKey: true, ...modifiers }), "forms"), null);
-    assert.equal(editorShortcut(key("A", { shiftKey: true, ...modifiers }), "forms"), null);
+    assert.equal(editorShortcut(key("A", { ctrlKey: true, ...modifiers }), "forms"), null);
   }
   assert.equal(editorShortcut(key("Tab", { ctrlKey: true }), "forms"), null);
 });

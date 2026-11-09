@@ -14,6 +14,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 
 interface WordEditorProps {
   word?: WordEntry | undefined;
+  autoFocusInitial?: boolean;
   onSave: (word: WordEntry) => void | Promise<void>;
   onCancel: () => void;
   saving?: boolean;
@@ -27,7 +28,12 @@ const createEmptyWord = (): WordEntry => {
 
   return {
     id: uuidv4(),
-    forms: [],
+    forms: [{
+      id: uuidv4(),
+      text: "",
+      script: "simplified",
+      isPreferred: true,
+    }],
     readings: [],
     senses: [],
     components: [],
@@ -51,7 +57,7 @@ const partOfSpeechOptions: PartOfSpeech[] = [
   "other",
 ];
 
-export default function WordEditor({ word, onSave, onCancel, saving = false, saveError, lookupByForm, onExistingWord }: WordEditorProps) {
+export default function WordEditor({ word, autoFocusInitial = false, onSave, onCancel, saving = false, saveError, lookupByForm, onExistingWord }: WordEditorProps) {
   const [draft, setDraft] = useState<WordEntry>(() => structuredClone(word ?? createEmptyWord()));
   const [error, setError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
@@ -81,7 +87,11 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
   }, [formsSignature, composing, lookupByForm, onExistingWord, lookupAttempt]);
   const editorRef = useRef<HTMLFieldSetElement>(null);
   const activeSection = useRef<EditorSection | null>(null);
-  const [focusTarget, setFocusTarget] = useState<{ section: EditorSection; id?: string } | null>(null);
+  const [focusTarget, setFocusTarget] = useState<{
+    section: EditorSection;
+    id?: string;
+    field?: "pinyin" | "partOfSpeech";
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (!focusTarget) return;
@@ -89,11 +99,19 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
     const row = focusTarget.id ? section?.querySelector<HTMLElement>(`[data-editor-row="${focusTarget.id}"]`) : section;
     const input = row?.querySelector<HTMLElement>(focusTarget.section === "senses"
       ? "textarea" : 'input:not([type="hidden"]):not([type="checkbox"]), textarea');
-    input?.focus({ preventScroll: true });
+    if (!focusTarget.field) input?.focus({ preventScroll: true });
+    if (focusTarget.field === "pinyin") row?.querySelector<HTMLElement>('[placeholder="Type a syllable"]')?.focus({ preventScroll: true });
+    if (focusTarget.field === "partOfSpeech") row?.querySelector<HTMLElement>('[role="combobox"]')?.focus({ preventScroll: true });
     activeSection.current = focusTarget.section;
     row?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
     setFocusTarget(null);
   }, [focusTarget]);
+
+  useLayoutEffect(() => {
+    if (!autoFocusInitial) return;
+    editorRef.current?.querySelector<HTMLElement>('[data-editor-section="forms"] [data-editor-row] input:not([type="hidden"])')
+      ?.focus({ preventScroll: true });
+  }, [autoFocusInitial]);
 
   const addForm = () => {
     const newForm: WrittenForm = {
@@ -382,7 +400,8 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
     if (shortcut.action === "save") { handleSave(); return; }
     const section = shortcut.section;
     const id = section === "forms" ? addForm() : section === "readings" ? addReading() : section === "senses" ? addSense() : undefined;
-    setFocusTarget({ section, ...(id ? { id } : {}) });
+    setFocusTarget({ section, ...(id ? { id } : {}),
+      ...(section === "readings" ? { field: "pinyin" } : section === "senses" ? { field: "partOfSpeech" } : {}) });
   };
 
   return (
@@ -601,14 +620,17 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
               <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", alignItems: "center" }}>
                 <TextField select label="Part of speech" sx={{ flex: 1 }}
                   value={sense.partOfSpeech ?? ""}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     updateSense(sense.id, {
                       partOfSpeech:
                         event.target.value
                           ? event.target.value as PartOfSpeech
                           : undefined,
-                    })
-                  }>
+                    });
+                    window.requestAnimationFrame(() => {
+                      editorRef.current?.querySelector<HTMLElement>(`#definition-${sense.id}`)?.focus();
+                    });
+                  }}>
                   <MenuItem value="">Unspecified</MenuItem>
 
                   {partOfSpeechOptions.map((pos) => (
@@ -633,6 +655,7 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
               </Stack>
 
               <TextField
+                id={`definition-${sense.id}`}
                 label="Definition"
                 value={sense.definition}
                 onChange={(event) =>
@@ -748,4 +771,3 @@ export default function WordEditor({ word, onSave, onCancel, saving = false, sav
     </Box>
   );
 }
-

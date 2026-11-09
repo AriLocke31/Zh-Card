@@ -10,9 +10,9 @@ The header shows a centered ?? h1 in a bold Chinese serif stack. Beneath it, fou
 
 ## WordsPage (src/pages/WordsPage.tsx)
 
-WordsPageProps requires repository: WordRepository. Loads one GET /words page at a time (25 records per repository request) and renders a responsive two/three/five-column grid of WordThumb components. Shows loading, empty, and error/retry states; there is no content heading or Refresh button. Pending pages do not show the previous page's cards. Effect cleanup ignores outdated/unmounted responses.
+WordsPageProps requires a repository and in-memory StudySession with its setter. Loads every GET /words page plus the saved study order, defaults new cards to creation-date-descending, and renders a locally paginated responsive grid. Left-click marks a card remembered and moves it to the end; right-click or Again moves it after three other cards. Details links preserve the page. Sync sends the ordered word IDs to the backend and uses the returned revision for subsequent conflict-safe syncs. Pending study changes are held in App memory across route changes but are not restored after reload/sign-out. Shows loading, empty, and error/retry states.
 
-The current opaque cursor is encoded in the URL query. Previously visited cursors are stored in browser navigation state for Previous; Next uses WordPage.nextCursor and replaces the visible grid rather than appending records. Previous is disabled on the first page and Next when nextCursor is absent. Direct cursor links without previous history can return to the first page. Cursor pagination does not infer a total count or stable ordering from DynamoDB Scan.
+The current page number is encoded in the URL query. Pagination slices the in-memory order; the total word label reflects the loaded deck.
 
 ## WordThumb (src/components/WordThumb.tsx)
 
@@ -22,7 +22,7 @@ returnTo/returnState retain the list URL and pagination history so Back to words
 
 ## WordPage (src/pages/WordPage.tsx)
 
-WordPageProps requires repository: WordRepository and onSavingChange: (saving: boolean) => void; creating?: boolean defaults to false. /words/:id fetches the word independently and renders WordDetail with edit/delete actions. /words/new starts WordEditor with a blank draft. Creation navigates to the server-generated ID; updates retain their detail route. API failures leave editor drafts mounted. Delete confirms and returns to the originating list page. The list refetches on return, reflecting mutations.
+WordPageProps requires repository: WordRepository and onSavingChange: (saving: boolean) => void; creating?: boolean defaults to false. /words/:id fetches the word independently and renders WordDetail with edit/delete actions. /words/new starts WordEditor with a blank draft and focuses the Hanzi input. Successful creation keeps the user on the create route, resets the editor for another word, and shows a success message; updates retain their detail route. API failures leave editor drafts mounted. Delete confirms and returns to the originating list page. The list refetches on return, reflecting mutations.
 
 ## WordDetail (`src/components/WordDetail.tsx`)
 

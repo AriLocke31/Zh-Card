@@ -37,7 +37,9 @@ Concurrent identical creates replay the winner's response. Transaction condition
 
 GET /metadata requires the same Cognito authorizer/access-token/OWNER_SUB checks as word routes. It performs a consistent summary read and returns only wordCount, wordsCreatedTotal, initializedAt, updatedAt. Missing initialization returns 503 rather than reporting an invented zero.
 
-UserMetadataProvider mounts after sign-in, loads this endpoint, and exposes metadata plus refreshMetadata through useUserMetadata(). Successful word creation/deletion refreshes the summary. Metadata fetch failures clear cached totals and show an independent retry warning without disguising a successful save as a failed write. Sign-out unmounts the provider. This introduces no extra visible count heading or changes to the grid's cursor-pagination behavior; components can consume the summary for future UI features.
+UserMetadataProvider mounts after sign-in, loads this endpoint, and exposes metadata plus refreshMetadata through useUserMetadata(). Successful word creation/deletion refreshes the summary. The words page uses the live wordCount for its page selector and displays the total below it; selecting an undiscovered page resolves the necessary opaque cursor chain. Metadata fetch failures clear cached totals and show an independent retry warning without disguising a successful save as a failed write. Sign-out unmounts the provider.
+
+The Study queue is stored separately as one owner-scoped `STUDY_ORDER` metadata item containing the ordered word IDs; each word's sort index is its zero-based position. A missing order starts with words sorted by `createdAt` descending. Study actions only reorder the in-memory queue; `POST /study/sync` conditionally replaces the stored order when the user clicks Sync. The session order survives route changes in memory but is lost on reload/sign-out if it has not been synced. New words are placed at the front by creation date, and deleted words are filtered when the queue loads. The sync payload is bounded to keep the metadata item below DynamoDB's 400 KB item limit.
 
 ## Deploy with your existing API and Lambda
 
@@ -53,12 +55,12 @@ UserMetadataProvider mounts after sign-in, loads this endpoint, and exposes meta
 }
 ```
 
-4. Add GET /metadata and GET /words/lookup to the existing API Gateway API, integrated with the same Lambda using payload 2.0 and ZhCardCognito JWT authorization. Add Idempotency-Key to allowed CORS headers, retaining Authorization, Content-Type, and If-Match. Deploy the stage if necessary.
+4. Add GET /metadata, GET /words/lookup, GET /study/order, and POST /study/sync to the existing API Gateway API, integrated with the same Lambda using payload 2.0 and ZhCardCognito JWT authorization. Add Idempotency-Key to allowed CORS headers, retaining Authorization, Content-Type, and If-Match. Deploy the stage if necessary.
 5. Pause ALL word writers, wait for in-flight requests to finish, and run the backfill below. Setting the Lambda's reserved concurrency to zero can stop new API invocations while the operator accesses DynamoDB directly; also pause any other writers/scripts. Do not resume old create/delete code after initialization: it does not maintain counters.
 6. Deploy the new Lambda through Jenkins and updated frontend while writers remain paused, then restore service. The new Lambda refuses create/delete until the summary exists, so no silent zero-based counters are created if deployment order changes.
 7. Verify GET /metadata, create (+1 to both), edit (no change), delete (-1 to current only), and retry a creation (no extra increment). Verify stale deletion leaves counts untouched.
 
-The main infrastructure/template.yaml also provisions a retained metadata table, configures the Lambda environment/permissions, declares GET /metadata, GET /words/lookup, and permits the idempotency header for users deploying a new complete stack. Neither template nor any AWS resources were deployed during local implementation.
+The main infrastructure/template.yaml also provisions a retained metadata table, configures the Lambda environment/permissions, declares GET /metadata, GET /words/lookup, GET /study/order, POST /study/sync, and permits the idempotency header for users deploying a new complete stack. Neither template nor any AWS resources were deployed during local implementation.
 
 ## Backfill existing words once
 

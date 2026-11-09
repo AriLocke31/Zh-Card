@@ -24,7 +24,7 @@ Updated 2026-10-19. Checked items describe implemented source or local checks, n
 - [ ] Supply real API URL configuration in .env.local and frontend hosting build settings.
 - [ ] Confirm the existing DynamoDB table has string partition key id and no sort key; inspect legacy records for compatibility.
 - [ ] Confirm the existing public Cognito client supports authorization-code flow and openid, and register localhost:5173/ and localhost:5174/ callback URLs.
-- [ ] Configure all five API routes, ZhCardCognito JWT authorization with openid scope, CORS origins/headers, Lambda TABLE_NAME/OWNER_SUB, and table IAM permissions; or validate/review/deploy the optional SAM stack.
+- [ ] Configure all word and Study API routes, ZhCardCognito JWT authorization with openid scope, CORS origins/headers, Lambda TABLE_NAME/OWNER_SUB, and table IAM permissions; or validate/review/deploy the optional SAM stack.
 - [ ] Run SAM validation/lint with the SAM CLI; it was unavailable locally.
 - [ ] Deploy the changed Lambda and frontend; reconcile Jenkins target if creating the optional stack.
 - [ ] Verify sign-in -> create -> reload -> edit -> reload -> delete -> GET 404 against DynamoDB.
@@ -76,4 +76,4 @@ Roles Anywhere/Jenkins AWS authentication was previously reported working; it wa
 - [x] Authenticated exact lookup route; Create automatically replaces matching drafts with existing data and saves as an update.
 - [x] Debounced IME-aware checks, stale-result rejection, pre-save checks, and concurrent-conflict recovery.
 - [x] Backfill collision detection, restartable mapping writes, and explicit counters-preserving form-index upgrade.
-- [ ] Configure GET /words/lookup and metadata DeleteItem/ConditionCheckItem permissions, backfill the form index with writers paused, deploy, and verify real-browser composition and matched-entry editing.
+- [ ] Configure the current API routes including Study order/sync and metadata permissions, backfill the form index with writers paused, deploy, and verify real-browser flows.

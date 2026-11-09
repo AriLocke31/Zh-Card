@@ -1,6 +1,6 @@
 import type { WordEntry } from "../types";
 import { isRecord, isStoredWordEntry } from "../validation/word";
-import type { WordRepository, WordPage } from "./WordRepository";
+import type { WordRepository, WordPage, StudyOrder } from "./WordRepository";
 import { isUserMetadata, type UserMetadata } from "../validation/metadata";
 
 export class ApiError extends Error {
@@ -49,6 +49,26 @@ export class ApiWordRepository implements WordRepository {
     if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isStoredWordEntry) ||
         (result.nextCursor !== undefined && typeof result.nextCursor !== "string")) throw new Error("The server returned an invalid word list.");
     return { items: result.items, ...(typeof result.nextCursor === "string" ? { nextCursor: result.nextCursor } : {}) };
+  }
+
+  async getStudyOrder(): Promise<StudyOrder> {
+    const result = await this.request("/study/order");
+    if (!isRecord(result) || !Array.isArray(result.order) ||
+        !result.order.every(id => typeof id === "string") ||
+        new Set(result.order).size !== result.order.length ||
+        (result.updatedAt !== undefined && typeof result.updatedAt !== "string")) {
+      throw new Error("The server returned an invalid study order.");
+    }
+    return { order: result.order, ...(typeof result.updatedAt === "string" ? { updatedAt: result.updatedAt } : {}) };
+  }
+
+  async syncStudyOrder(order: string[], expectedUpdatedAt?: string): Promise<string> {
+    const result = await this.request("/study/sync", {
+      method: "POST",
+      body: JSON.stringify({ order, expectedUpdatedAt }),
+    });
+    if (!isRecord(result) || typeof result.updatedAt !== "string") throw new Error("The server returned an invalid study sync response.");
+    return result.updatedAt;
   }
 
   async getMetadata(): Promise<UserMetadata> {

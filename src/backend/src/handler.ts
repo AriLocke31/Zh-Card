@@ -70,6 +70,48 @@ export function createHandler(send: (command: Command) => Promise<Result>, confi
           return response(200, { wordCount: summary.wordCount, wordsCreatedTotal: summary.wordsCreatedTotal,
             initializedAt: summary.initializedAt, updatedAt: summary.updatedAt });
         }
+        case "GET /study/order": {
+          if (!config.metadataTableName || config.metadataTableName === TableName) return response(503, { message: "Study order storage is not configured" });
+          const result = await send(new GetCommand({ TableName: config.metadataTableName,
+            Key: { userId: config.ownerSub, key: "STUDY_ORDER" }, ConsistentRead: true }));
+          if (!result.Item) return response(200, { order: [] });
+          if (result.Item.schemaVersion !== 1 || !Array.isArray(result.Item.order) ||
+              !result.Item.order.every(id => typeof id === "string" && id.length > 0) ||
+              new Set(result.Item.order).size !== result.Item.order.length ||
+              typeof result.Item.updatedAt !== "string") {
+            throw new Error("Stored study order is invalid");
+          }
+          return response(200, { order: result.Item.order, updatedAt: result.Item.updatedAt });
+        }
+        case "POST /study/sync": {
+          if (!await readSummary()) return response(503, { message: "Word metadata is not initialized. Run the metadata backfill before enabling writes." });
+          let payload: unknown;
+          try { payload = JSON.parse(event.isBase64Encoded ? Buffer.from(event.body ?? "", "base64").toString("utf8") : event.body ?? ""); }
+          catch { return response(400, { message: "Invalid JSON" }); }
+          if (!isRecord(payload) || !Array.isArray(payload.order) ||
+              !payload.order.every(id => typeof id === "string" && id.length > 0 && id.length <= 128) ||
+              new Set(payload.order).size !== payload.order.length ||
+              payload.order.length > 10000 ||
+              Buffer.byteLength(JSON.stringify(payload.order), "utf8") > 350000 ||
+              (payload.expectedUpdatedAt !== undefined &&
+                (typeof payload.expectedUpdatedAt !== "string" || !Number.isFinite(Date.parse(payload.expectedUpdatedAt))))) {
+            return response(400, { message: "Invalid study order" });
+          }
+          const updatedAt = new Date(Math.max(Date.now(), payload.expectedUpdatedAt ? Date.parse(payload.expectedUpdatedAt) + 1 : 0)).toISOString();
+          const Item = { userId: config.ownerSub, key: "STUDY_ORDER", schemaVersion: 1, order: payload.order, updatedAt };
+          try {
+            await send(new PutCommand({ TableName: config.metadataTableName, Item,
+              ...(payload.expectedUpdatedAt === undefined
+                ? { ConditionExpression: "attribute_not_exists(userId)" }
+                : { ConditionExpression: "updatedAt = :expected", ExpressionAttributeValues: { ":expected": payload.expectedUpdatedAt } }) }));
+          } catch (error) {
+            if (error instanceof Error && error.name === "ConditionalCheckFailedException") {
+              return response(409, { message: "Study order changed in another session. Reload the Study tab before syncing again." });
+            }
+            throw error;
+          }
+          return response(200, { updatedAt });
+        }
         case "GET /words/lookup": {
           const text = event.queryStringParameters?.form;
           if (!text?.trim()) return response(400, { message: "A written form is required" });

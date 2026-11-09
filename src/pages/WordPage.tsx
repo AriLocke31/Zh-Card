@@ -27,6 +27,7 @@ export default function WordPage({ repository, creating = false, onSavingChange 
   const [notice, setNotice] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [creationType, setCreationType] = useState<CreationType>("Word");
+  const [draftVersion, setDraftVersion] = useState(0);
   const returnTo = typeof location.state?.returnTo === "string" && /^\/words(?:\?|$)/.test(location.state.returnTo)
     ? location.state.returnTo : "/words";
   const returnState: unknown = location.state?.returnState;
@@ -59,9 +60,17 @@ export default function WordPage({ repository, creating = false, onSavingChange 
         if (existing) { loadExisting(existing); return; }
       }
       const saved = isNew ? await repository.create(draft) : await repository.update(draft);
-      setWord(saved); setEditing(false); setNotice("Word saved.");
-      if (isNew) void refreshMetadata();
-      if (creating) navigate(`/words/${encodeURIComponent(saved.id)}`, { replace: true, state: { returnTo, returnState } });
+      if (isNew) {
+        setWord(null);
+        setEditing(true);
+        setDraftVersion(value => value + 1);
+        setNotice("Word saved successfully.");
+        void refreshMetadata();
+      } else {
+        setWord(saved);
+        setEditing(false);
+        setNotice("Word saved.");
+      }
     } catch (error) {
       if (error instanceof ApiError && error.existingWord) loadExisting(error.existingWord);
       else setSaveError(error instanceof Error ? error.message : "Could not save word.");
@@ -103,7 +112,8 @@ export default function WordPage({ repository, creating = false, onSavingChange 
     {notice && <Alert severity="success" sx={{ mb: 2 }}>{notice}</Alert>}
     {creating && creationType !== "Word" && <Typography>{creationType} editor is not available yet.</Typography>}
     <Box hidden={creating && creationType !== "Word"}>
-    {loading ? <CircularProgress aria-label="Loading word" /> : editing ? <WordEditor key={word?.id ?? "new"} word={word ?? undefined}
+    {loading ? <CircularProgress aria-label="Loading word" /> : editing ? <WordEditor key={`${word?.id ?? "new"}-${draftVersion}`} word={word ?? undefined}
+      autoFocusInitial={creating && !word}
       lookupByForm={creating && !word && creationType === "Word" ? lookupByForm : undefined} onExistingWord={loadExisting}
       saving={saving} saveError={saveError} onSave={save} onCancel={() => {
         if (creating) navigate(returnTo, { state: returnState });

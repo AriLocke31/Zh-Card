@@ -83,6 +83,12 @@ Resources:
         GetMetadata:
           Type: HttpApi
           Properties: { ApiId: !Ref WordsApi, Path: /metadata, Method: GET }
+        GetStudyOrder:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: /study/order, Method: GET }
+        SyncStudyOrder:
+          Type: HttpApi
+          Properties: { ApiId: !Ref WordsApi, Path: /study/sync, Method: POST }
         ListWords:
           Type: HttpApi
           Properties: { ApiId: !Ref WordsApi, Path: /words, Method: GET }
